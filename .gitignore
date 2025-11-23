@@ -1,0 +1,49 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.pnpm-debug.log*
+
+# 构建输出
+dist/
+build/
+*.log
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 临时文件
+*.tmp
+*.temp
+.cache/

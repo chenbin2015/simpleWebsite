@@ -1,0 +1,13 @@
+{
+  "name": "database-init-scripts",
+  "version": "1.0.0",
+  "description": "Database initialization scripts",
+  "main": "init.js",
+  "scripts": {
+    "init": "node init.js"
+  },
+  "dependencies": {
+    "mysql2": "^3.6.5"
+  }
+}
+
