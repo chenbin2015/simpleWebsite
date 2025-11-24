@@ -70,7 +70,28 @@ export default {
         '--安全准入',
         '--管理制度',
         '科普教育'
-      ]
+      ],
+      // 菜单名称到路由路径的映射
+      menuRouteMap: {
+        '首页': '/',
+        '中心概况': '/center-overview',
+        '实验教学': '/experimental-teaching',
+        '课程体系': '/course-system',
+        '实验课程': '/experimental-course',
+        '实验资源': '/experimental-resources',
+        '实验仪器': '/experimental-instruments',
+        '实验空间': '/experimental-space',
+        '开放共享': '/open-sharing',
+        '建设成效': '/construction-results',
+        '实验教学改革': '/teaching-reform',
+        '科研创新成果': '/research-innovation',
+        '实验环境与能力': '/experimental-environment',
+        '安全管理': '/safety-management',
+        '安全教育': '/safety-education',
+        '安全准入': '/safety-access',
+        '管理制度': '/management-system',
+        '科普教育': '/science-education'
+      }
     }
   },
   computed: {
@@ -88,14 +109,21 @@ export default {
             if (!currentTopMenu.children) {
               currentTopMenu.children = []
             }
-            currentTopMenu.children.push({ name: childName })
+            currentTopMenu.children.push({ 
+              name: childName,
+              path: this.menuRouteMap[childName] || ''
+            })
           }
         } else {
           // 一级菜单
           if (currentTopMenu) {
             result.push(currentTopMenu)
           }
-          currentTopMenu = { name: menu.trim() }
+          const menuName = menu.trim()
+          currentTopMenu = { 
+            name: menuName,
+            path: this.menuRouteMap[menuName] || ''
+          }
         }
       })
       
@@ -108,6 +136,14 @@ export default {
     }
   },
   mounted() {
+    // 根据当前路由设置激活菜单
+    this.updateActiveMenu()
+    
+    // 监听路由变化
+    this.$router.afterEach(() => {
+      this.updateActiveMenu()
+    })
+    
     // 隐藏"更多"菜单按钮
     this.$nextTick(() => {
       const moreMenu = document.querySelector('.nav-menu .el-menu__more')
@@ -133,10 +169,42 @@ export default {
     })
   },
   methods: {
+    updateActiveMenu() {
+      const currentPath = this.$route.path
+      // 根据路径找到对应的菜单名称
+      for (const [menuName, path] of Object.entries(this.menuRouteMap)) {
+        if (path === currentPath) {
+          this.activeMenu = menuName
+          return
+        }
+      }
+      // 如果没找到，默认设置为首页
+      this.activeMenu = '首页'
+    },
     handleMenuSelect(index) {
-      this.activeMenu = index
-      // TODO: 处理路由跳转
-      console.log('Selected menu:', index)
+      // index 可能是 "菜单名" 或 "父菜单-子菜单" 格式
+      let menuName = index
+      if (index.includes('-')) {
+        // 如果是子菜单，格式是 "父菜单-子菜单"，需要提取子菜单名称
+        // 例如: "实验教学-课程体系" -> "课程体系"
+        // 从第一个 "-" 之后开始取，因为子菜单名称可能也包含 "-"
+        const firstDashIndex = index.indexOf('-')
+        if (firstDashIndex !== -1) {
+          menuName = index.substring(firstDashIndex + 1)
+        }
+      }
+      
+      const routePath = this.menuRouteMap[menuName]
+      if (routePath) {
+        this.$router.push(routePath)
+        this.activeMenu = menuName
+      }
+    },
+    handleMenuClick(routePath, menuName) {
+      if (routePath) {
+        this.$router.push(routePath)
+        this.activeMenu = menuName
+      }
     }
   }
 }

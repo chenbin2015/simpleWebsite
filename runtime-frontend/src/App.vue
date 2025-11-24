@@ -31,7 +31,7 @@
                     <template #title>{{ menu.name }}</template>
                     <el-menu-item 
                       v-for="child in menu.children" 
-                      :key="child.name"
+                      :key="child.id || child.name"
                       :index="`${menu.name}-${child.name}`"
                     >
                       {{ child.name }}
@@ -116,31 +116,6 @@
 <script>
 export default {
   name: 'App',
-  data() {
-    return {
-      activeMenu: '首页',
-      menus: [
-        '首页',
-        '中心概况',
-        '实验教学',
-        '--课程体系',
-        '--实验课程',
-        '实验资源',
-        '--实验仪器',
-        '--实验空间',
-        '--开放共享',
-        '建设成效',
-        '--实验教学改革',
-        '--科研创新成果',
-        '--实验环境与能力',
-        '安全管理',
-        '--安全教育',
-        '--安全准入',
-        '--管理制度',
-        '科普教育'
-      ]
-    }
-  },
   computed: {
     topMenus() {
       const result = []
@@ -150,20 +125,19 @@ export default {
         if (menu.trim() === '') return
         
         if (menu.startsWith('--')) {
-          // 二级菜单
-          const childName = menu.substring(2).trim()
-          if (currentTopMenu) {
-            if (!currentTopMenu.children) {
-              currentTopMenu.children = []
-            }
-            currentTopMenu.children.push({ name: childName })
-          }
+          // 二级菜单（已废弃，现在从接口获取）
+          // 这里不再处理，二级菜单从接口获取
         } else {
           // 一级菜单
           if (currentTopMenu) {
             result.push(currentTopMenu)
           }
-          currentTopMenu = { name: menu.trim() }
+          const menuName = menu.trim()
+          currentTopMenu = { 
+            name: menuName,
+            path: this.menuRouteMap[menuName] || '',
+            children: this.subMenus[menuName] || [] // 从接口获取的二级菜单
+          }
         }
       })
       
@@ -175,7 +149,61 @@ export default {
       return result
     }
   },
+  data() {
+    return {
+      activeMenu: '首页',
+      menus: [
+        '首页',
+        '中心概况',
+        '实验教学',
+        '实验资源',
+        '建设成效',
+        '安全管理',
+        '科普教育'
+      ],
+      // 模拟的二级菜单数据，key为一级菜单名称，value为包含id和type的数组
+      subMenus: {
+        '实验教学': [
+          { id: 1, name: '课程体系', type: 'course' },
+          { id: 2, name: '实验课程', type: 'course' }
+        ],
+        '实验资源': [
+          { id: 3, name: '实验仪器', type: 'resource' },
+          { id: 4, name: '实验空间', type: 'resource' },
+          { id: 5, name: '开放共享', type: 'resource' }
+        ],
+        '建设成效': [
+          { id: 6, name: '实验教学改革', type: 'achievement' },
+          { id: 7, name: '科研创新成果', type: 'achievement' },
+          { id: 8, name: '实验环境与能力', type: 'achievement' }
+        ],
+        '安全管理': [
+          { id: 9, name: '安全教育', type: 'safety' },
+          { id: 10, name: '安全准入', type: 'safety' },
+          { id: 11, name: '管理制度', type: 'safety' }
+        ]
+      },
+      // 菜单名称到路由路径的映射（仅用于一级菜单）
+      menuRouteMap: {
+        '首页': '/',
+        '中心概况': '/center-overview',
+        '实验教学': '/experimental-teaching',
+        '实验资源': '/experimental-resources',
+        '建设成效': '/construction-results',
+        '安全管理': '/safety-management',
+        '科普教育': '/science-education'
+      }
+    }
+  },
   mounted() {
+    // 根据当前路由设置激活菜单
+    this.updateActiveMenu()
+    
+    // 监听路由变化
+    this.$router.afterEach(() => {
+      this.updateActiveMenu()
+    })
+    
     // 隐藏"更多"菜单按钮
     this.$nextTick(() => {
       const moreMenu = document.querySelector('.nav-menu .el-menu__more')
@@ -201,10 +229,73 @@ export default {
     })
   },
   methods: {
+    updateActiveMenu() {
+      const currentPath = this.$route.path
+      // 根据路径找到对应的菜单名称
+      for (const [menuName, path] of Object.entries(this.menuRouteMap)) {
+        if (path === currentPath) {
+          this.activeMenu = menuName
+          return
+        }
+      }
+      
+      // 检查是否是二级菜单的路由
+      // 二级菜单路由格式可能是 /menu/:id 或 /menu/:type/:id
+      const pathParts = currentPath.split('/').filter(p => p)
+      if (pathParts.length >= 2) {
+        // 尝试从路由参数中获取菜单信息
+        const menuId = this.$route.params.id
+        const menuType = this.$route.params.type
+        if (menuId) {
+          // 查找对应的二级菜单
+          for (const [parentMenu, children] of Object.entries(this.subMenus)) {
+            const child = children.find(c => c.id == menuId)
+            if (child) {
+              this.activeMenu = `${parentMenu}-${child.name}`
+              return
+            }
+          }
+        }
+      }
+      
+      // 如果没找到，默认设置为首页
+      this.activeMenu = '首页'
+    },
     handleMenuSelect(index) {
-      this.activeMenu = index
-      // TODO: 处理路由跳转
-      console.log('Selected menu:', index)
+      // index 可能是 "菜单名" 或 "父菜单-子菜单名称" 格式
+      let menuName = index
+      let isSubMenu = false
+      let subMenuData = null
+      
+      if (index.includes('-')) {
+        // 如果是子菜单，格式是 "父菜单-子菜单名称"
+        const firstDashIndex = index.indexOf('-')
+        if (firstDashIndex !== -1) {
+          const parentMenu = index.substring(0, firstDashIndex)
+          const childName = index.substring(firstDashIndex + 1)
+          
+          // 查找对应的二级菜单数据
+          const children = this.subMenus[parentMenu] || []
+          subMenuData = children.find(c => c.name === childName)
+          
+          if (subMenuData) {
+            isSubMenu = true
+            // 根据id和type构建路由
+            // 路由格式：/menu/:type/:id 或 /menu/:id
+            const routePath = `/menu/${subMenuData.type}/${subMenuData.id}`
+            this.$router.push(routePath)
+            this.activeMenu = index
+            return
+          }
+        }
+      }
+      
+      // 一级菜单跳转
+      const routePath = this.menuRouteMap[menuName]
+      if (routePath) {
+        this.$router.push(routePath)
+        this.activeMenu = menuName
+      }
     }
   }
 }
@@ -425,7 +516,7 @@ export default {
 
 .contact-item {
   margin-bottom: 12px;
-  font-size: 14px;
+  font-size: 18px;
   line-height: 1.8;
 }
 
@@ -449,7 +540,7 @@ export default {
 }
 
 .links-title {
-  font-size: 16px;
+  font-size: 24px;
   font-weight: 600;
   margin-bottom: 20px;
   color: #fff;
@@ -465,7 +556,7 @@ export default {
 }
 
 .link-item {
-  font-size: 14px;
+  font-size: 18px;
   color: rgba(255, 255, 255, 0.9);
   margin-bottom: 10px;
   cursor: pointer;

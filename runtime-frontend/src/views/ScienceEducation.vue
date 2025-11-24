@@ -1,12 +1,12 @@
 <template>
   <div class="page-container">
-    <h1>首页</h1>
+    <h1>科普教育</h1>
   </div>
 </template>
 
 <script>
 export default {
-  name: 'Home'
+  name: 'ScienceEducation'
 }
 </script>
 
@@ -21,3 +21,4 @@ h1 {
   color: #333;
 }
 </style>
+
