@@ -289,24 +289,28 @@ export default {
   padding: 20px;
   box-sizing: border-box;
   height: 660px;
+  display: flex;
+  flex-direction: column;
 }
 
 .service-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
+  flex: 1;
 }
 
 .service-item {
   display: flex;
   align-items: center;
   gap: 15px;
-  padding: 20px;
+  padding: 25px 20px;
   background-color: #f5f5f5;
   border-radius: 8px;
   transition: all 0.3s;
   cursor: pointer;
-  margin-bottom: 50px;
+  flex: 1;
+  min-height: 0;
 }
 
 .service-item:hover {
@@ -317,12 +321,16 @@ export default {
 
 .service-icon {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .service-text {
   font-size: 16px;
   color: #333;
   font-weight: 500;
+  line-height: 1.5;
 }
 </style>
 
