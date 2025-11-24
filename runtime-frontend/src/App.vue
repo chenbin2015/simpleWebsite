@@ -49,7 +49,9 @@
       
       <!-- 主要内容区 -->
       <el-main class="app-main">
-        <router-view />
+        <transition name="fade-slide" mode="out-in">
+          <router-view />
+        </transition>
       </el-main>
       
       <!-- 底部 -->
@@ -418,7 +420,34 @@ export default {
   padding: 20px;
   background: #f5f7fa;
   min-height: calc(100vh - 120px);
+  position: relative;
+  overflow: hidden;
 }
 
+/* 路由切换过渡效果：淡入淡出 + 轻微滑动 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease-in-out;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.fade-slide-enter-to {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.fade-slide-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
 
 </style>
