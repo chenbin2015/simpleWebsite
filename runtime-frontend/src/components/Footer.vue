@@ -1,5 +1,6 @@
 <template>
   <el-footer class="app-footer">
+    <div class="footer-container">
     <!-- 顶部区域：Logo和分隔线 -->
     <div class="footer-top">
       <div class="footer-logo">
@@ -54,6 +55,7 @@
     <div class="footer-bottom">
       <p>Copyright © 2025 东南大学建筑学院实验教学中心All Rights Reserved. 版权所有</p>
     </div>
+    </div>
   </el-footer>
 </template>
 
@@ -69,6 +71,10 @@ export default {
   color: #fff;
   padding: 40px 60px 10px;
   min-height: 320px;
+}
+.footer-container {
+    width:1600px;
+    margin:0 auto;
 }
 
 /* 顶部区域：Logo和分隔线 */

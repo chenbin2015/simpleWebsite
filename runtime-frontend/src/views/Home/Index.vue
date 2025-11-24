@@ -53,6 +53,32 @@
           </div>
         </div>
       </div>
+      <!-- 通知公告区域 -->
+      <div class="announcement-section">
+        <div class="announcement-header">
+          <h2 class="announcement-title">通知公告</h2>
+          <a href="#" class="announcement-more-btn">查看更多 ></a>
+        </div>
+        <div class="announcement-list">
+          <a 
+            href="#" 
+            class="announcement-item" 
+            v-for="(announcement, index) in announcementList" 
+            :key="index"
+          >
+            <div class="announcement-content">
+            <div class="announcement-item-title">
+                <h3 >{{ announcement.title }}</h3>
+                <div class="announcement-date">{{ announcement.date }}</div>
+            </div>
+           
+              <p class="announcement-item-desc">{{ announcement.description }}</p>
+              <span class="announcement-item-link">查看更多 ></span>
+            </div>
+           
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -117,6 +143,23 @@ export default {
         {
           name: '实验申请与安全准入',
           iconComponent: Lock
+        }
+      ],
+      announcementList: [
+        {
+          title: '关于成立建筑学院实验教学中心的通知',
+          description: '关于成立建筑学院实验教学中心的通知',
+          date: '2025-09-09'
+        },
+        {
+          title: '关于印发《建筑学院实验室安全奖惩实施细则》的通知',
+          description: '关于印发《建筑学院实验室安全奖惩实施细则》的通知',
+          date: '2025-09-09'
+        },
+        {
+          title: '关于调整建筑学院实验室安全领导小组成员及其职责分工的通知',
+          description: '关于调整建筑学院实验室安全领导小组成员及其职责分工的通知',
+          date: '2025-09-04'
         }
       ]
     }
@@ -211,7 +254,7 @@ export default {
 }
 
 .page-container {
-  padding: 20px;
+  padding: 20px 0;
   display: flex;
   gap: 20px;
   align-items: flex-start;
@@ -223,7 +266,7 @@ export default {
   background-color: #fff;
   padding: 20px;
   box-sizing: border-box;
-  height: 580px;
+  height: 520px;
   display: flex;
   flex-direction: column;
 }
@@ -321,7 +364,7 @@ export default {
   background-color: #fff;
   padding: 20px;
   box-sizing: border-box;
-  height: 580px;
+  height: 520px;
   display: flex;
   flex-direction: column;
 }
@@ -364,6 +407,123 @@ export default {
   color: #333;
   font-weight: 500;
   line-height: 1.5;
+}
+
+.announcement-section {
+  margin: 0px 0 20px;
+  padding: 20px;
+  background-color: #fff;
+  width: 1580px;
+}
+
+.announcement-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.announcement-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #ffd700;
+  display: inline-block;
+}
+.announcement-title h3 {
+    display: inline-block;
+}
+
+.announcement-more-btn {
+  background-color: #ffd700;
+  color: #333;
+  padding: 8px 20px;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.announcement-more-btn:hover {
+  background-color: #ffed4e;
+}
+
+.announcement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.announcement-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 0;
+  text-decoration: none;
+  color: inherit;
+  transition: padding-left 0.3s;
+  cursor: pointer;
+  position: relative;
+  border-bottom: 1px solid #eee;
+}
+
+.announcement-item:last-child {
+  border-bottom: none;
+}
+
+.announcement-item:hover {
+  padding-left: 5px;
+}
+
+.announcement-item:hover .announcement-item-title {
+  color: #ffd700;
+}
+
+.announcement-content {
+  flex: 1;
+  padding-right: 20px;
+}
+
+.announcement-item-title {
+    display: flex;
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ffd700;
+  width: 100%;
+  transition: color 0.3s;
+  justify-content: space-between;
+
+}
+
+.announcement-item-desc {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+}
+
+.announcement-item-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 14px;
+  color: #333;
+  text-decoration: none;
+}
+
+.announcement-date {
+    display: inline;
+  font-size: 14px;
+  color: #999;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 5px 15px;
+  border-radius: 4px;
 }
 </style>
 
