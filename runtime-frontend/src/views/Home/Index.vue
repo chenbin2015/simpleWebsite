@@ -17,22 +17,24 @@
           <a href="#" class="more-link">查看更多 ></a>
         </div>
       </div>
-          <div class="news-carousel">
-            <el-carousel :interval="4000" height="300px" indicator-position="outside" arrow="always">
-              <el-carousel-item v-for="(item, index) in carouselItems" :key="index">
-                <img :src="item.image" :alt="item.title" class="carousel-image" />
-              </el-carousel-item>
-            </el-carousel>
-          </div>
-          <div class="news-list">
-            <div class="news-item" v-for="(news, index) in newsList" :key="index">
-              <div class="news-date">
-                <div class="date-day">{{ news.day }}</div>
-                <div class="date-month">{{ news.month }}</div>
-              </div>
-              <div class="news-content">
-                <h3 class="news-title">{{ news.title }}</h3>
-                <p class="news-desc">{{ news.description }}</p>
+          <div class="news-content-wrapper">
+            <div class="news-carousel">
+              <el-carousel :interval="4000" height="400px" indicator-position="outside" arrow="always">
+                <el-carousel-item v-for="(item, index) in carouselItems" :key="index">
+                  <img :src="item.image" :alt="item.title" class="carousel-image" />
+                </el-carousel-item>
+              </el-carousel>
+            </div>
+            <div class="news-list">
+              <div class="news-item" v-for="(news, index) in newsList" :key="index">
+                <div class="news-date">
+                  <div class="date-day">{{ news.day }}</div>
+                  <div class="date-month">{{ news.month }}</div>
+                </div>
+                <div class="news-content">
+                  <h3 class="news-title">{{ news.title }}</h3>
+                  <p class="news-desc">{{ news.description }}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -69,15 +71,15 @@ export default {
     return {
       carouselItems: [
         {
-          image: 'https://guanwang.makabaka.ltd/uploads/20251114/4d14316aa3a1c172ff536a089e11f35a.png',
+          image: 'https://guanwang.makabaka.ltd/uploads/20251114/89478336803a8c829b418cdfb19b769c.jpg',
           title: '2025年东南大学教育部YES项目艺术与媒介国际暑期学校'
         },
         {
-          image: 'https://guanwang.makabaka.ltd/uploads/20251114/4d14316aa3a1c172ff536a089e11f35a.png',
+          image: 'https://guanwang.makabaka.ltd/uploads/20251114/d78356969635624a85008c826595f8a6.png',
           title: '李迎成教授荣获2023年度中国城市规划学会青年科技奖'
         },
         {
-          image: 'https://guanwang.makabaka.ltd/uploads/20251114/4d14316aa3a1c172ff536a089e11f35a.png',
+          image: 'https://guanwang.makabaka.ltd/uploads/20250904/25ff9f802341defe3844aee5e555e51c.jpg',
           title: '从伟大抗战精神中汲取前行力量'
         }
       ],
@@ -93,6 +95,18 @@ export default {
           month: '10月',
           title: '李迎成教授荣获2023年度中国城市规划学会青年科技奖',
           description: '李迎成教授凭借在城乡规划领域的突出贡献，荣获2023年度中国城市规划学会青年科技奖。'
+        },
+        {
+          day: '11',
+          month: '10月',
+          title: '"2025教育部YES项目艺术与媒介国际暑期学校"开营',
+          description: '2025教育部YES项目艺术与媒介国际暑期学校正式开营，来自世界各地的学员齐聚一堂，共同开启学习交流之旅。'
+        },
+        {
+          day: '10',
+          month: '10月',
+          title: '从伟大抗战精神中汲取前行力量!纪念大会引发东南大学师生热烈反响',
+          description: '纪念大会在东南大学举行，师生们纷纷表示要从伟大抗战精神中汲取前行力量，为实现中华民族伟大复兴而努力奋斗。'
         }
       ],
       serviceList: [
@@ -168,15 +182,21 @@ export default {
   display: block;
 }
 
+.news-content-wrapper {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
 .news-carousel {
-  margin-bottom: 30px;
-  border-radius: 8px;
+  width: 50%;
+  flex: 0 0 50%;
   overflow: hidden;
 }
 
 .news-carousel :deep(.el-carousel) {
   width: 100%;
-  border-radius: 8px;
+  height: 100%;
 }
 
 .news-carousel :deep(.el-carousel__item) {
@@ -203,22 +223,28 @@ export default {
   background-color: #fff;
   padding: 20px;
   box-sizing: border-box;
-  height: 660px;
+  height: 580px;
+  display: flex;
+  flex-direction: column;
 }
 
 .news-list {
+  width: 50%;
+  flex: 0 0 50%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
+  overflow: hidden;
 }
 
 .news-item {
   display: flex;
   gap: 15px;
-  padding: 15px 0;
+  padding: 0px 0 26px;
   border-bottom: 1px solid #eee;
   cursor: pointer;
   transition: all 0.3s;
+  flex-shrink: 0;
 }
 
 .news-item:last-child {
@@ -258,7 +284,10 @@ export default {
 }
 
 .news-content {
+
   flex: 1;
+  margin-right: 20px;
+  height: 65px;
 }
 
 .news-title {
@@ -268,6 +297,10 @@ export default {
   color: #333;
   line-height: 1.4;
   transition: color 0.3s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width:450px
 }
 
 .news-desc {
@@ -288,7 +321,7 @@ export default {
   background-color: #fff;
   padding: 20px;
   box-sizing: border-box;
-  height: 660px;
+  height: 580px;
   display: flex;
   flex-direction: column;
 }
