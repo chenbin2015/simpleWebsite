@@ -1,10 +1,10 @@
 import { createApp } from 'vue'
-import { createRouter, createWebHistory } from 'vue-router'
 import { createI18n } from 'vue-i18n'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import App from './App.vue'
-import Home from './views/Home.vue'
+import router from './router'
+import { isTokenExpired, clearAuth } from './utils/auth'
 
 // i18n配置
 const i18n = createI18n({
@@ -25,14 +25,24 @@ const i18n = createI18n({
   }
 })
 
-// 路由配置
-const routes = [
-  { path: '/', component: Home }
-]
-
-const router = createRouter({
-  history: createWebHistory(),
-  routes
+// 路由守卫：检查token是否过期
+router.beforeEach((to, from, next) => {
+  // 如果访问登录或注册页面，直接通过
+  if (to.path === '/login' || to.path === '/register') {
+    next()
+    return
+  }
+  
+  // 检查token是否过期
+  if (isTokenExpired()) {
+    clearAuth()
+    if (to.path !== '/login') {
+      next('/login')
+      return
+    }
+  }
+  
+  next()
 })
 
 const app = createApp(App)
