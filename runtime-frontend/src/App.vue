@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+ 
     <el-container>
       <!-- 头部 -->
       <el-header class="app-header">
@@ -48,16 +48,16 @@
       </el-header>
       
       <!-- 主要内容区 -->
-      <el-main class="app-main">
+      <div class="app-main">
         <transition name="fade-slide" mode="out-in">
           <router-view />
         </transition>
-      </el-main>
+      </div>
       
       <!-- 底部 -->
       <Footer />
     </el-container>
-  </div>
+ 
 </template>
 
 <script>
@@ -417,7 +417,6 @@ export default {
 
 .app-main {
   flex: 1;
-  padding: 20px;
   background: #f5f7fa;
   min-height: calc(100vh - 120px);
   position: relative;
