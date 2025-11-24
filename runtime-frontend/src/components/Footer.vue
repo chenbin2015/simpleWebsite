@@ -68,7 +68,7 @@ export default {
   background: #303133;
   color: #fff;
   padding: 40px 60px 10px;
-  min-height: 300px;
+  min-height: 320px;
 }
 
 /* 顶部区域：Logo和分隔线 */
@@ -84,7 +84,7 @@ export default {
 }
 
 .footer-logo .logo {
-  height: 50px;
+  height: 30px;
   width: auto;
 }
 
@@ -110,7 +110,7 @@ export default {
 
 .contact-item {
   margin-bottom: 12px;
-  font-size: 14px;
+  font-size: 18px;
   line-height: 1.8;
 }
 
@@ -134,7 +134,7 @@ export default {
 }
 
 .links-title {
-  font-size: 16px;
+  font-size: 24px;
   font-weight: 600;
   margin-bottom: 20px;
   color: #fff;
@@ -150,7 +150,7 @@ export default {
 }
 
 .link-item {
-  font-size: 14px;
+  font-size: 18px;
   color: rgba(255, 255, 255, 0.9);
   margin-bottom: 10px;
   cursor: pointer;
