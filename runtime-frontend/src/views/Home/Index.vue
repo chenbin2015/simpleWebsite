@@ -14,19 +14,29 @@
             <div class="section-header">
         <div class="header-left">新闻动态</div>
         <div class="header-center">
-          <a href="#" class="more-link">查看更多 ></a>
+          <a href="#" class="more-link" @click.prevent="handleViewMoreNews">查看更多 ></a>
         </div>
       </div>
           <div class="news-content-wrapper">
             <div class="news-carousel">
               <el-carousel :interval="4000" height="400px" indicator-position="outside" arrow="always">
                 <el-carousel-item v-for="(item, index) in carouselItems" :key="index">
-                  <img :src="item.image" :alt="item.title" class="carousel-image" />
+                  <img 
+                    :src="item.image" 
+                    :alt="item.title" 
+                    class="carousel-image"
+                    @click="handleCarouselClick(item)"
+                  />
                 </el-carousel-item>
               </el-carousel>
             </div>
             <div class="news-list">
-              <div class="news-item" v-for="(news, index) in newsList" :key="index">
+              <div 
+                class="news-item" 
+                v-for="(news, index) in newsList" 
+                :key="index"
+                @click="handleNewsClick(news)"
+              >
                 <div class="news-date">
                   <div class="date-day">{{ news.day }}</div>
                   <div class="date-month">{{ news.month }}</div>
@@ -42,7 +52,12 @@
         <div class="right-area">
             <div class="header-right">中心服务</div>
           <div class="service-list">
-            <div class="service-item" v-for="(service, index) in serviceList" :key="index">
+            <div 
+              class="service-item" 
+              v-for="(service, index) in serviceList" 
+              :key="index"
+              @click="handleServiceClick(service)"
+            >
               <div class="service-icon">
                 <el-icon :size="40" :color="'#4caf50'">
                   <component :is="service.iconComponent" />
@@ -54,81 +69,114 @@
         </div>
       </div>
       <!-- 通知公告区域 -->
-      <div class="announcement-section">
-        <div class="announcement-header">
-          <h2 class="announcement-title">通知公告</h2>
-          <a href="#" class="announcement-more-btn">查看更多 ></a>
-        </div>
-        <div class="announcement-list">
-          <a 
-            href="#" 
-            class="announcement-item" 
-            v-for="(announcement, index) in announcementList" 
-            :key="index"
-          >
-            <div class="announcement-content">
-            <div class="announcement-item-title">
-                <h3 >{{ announcement.title }}</h3>
-                <div class="announcement-date">{{ announcement.date }}</div>
-            </div>
-           
-              <p class="announcement-item-desc">{{ announcement.description }}</p>
-              <span class="announcement-item-link">查看更多 ></span>
-            </div>
-           
-          </a>
-        </div>
-      </div>
+      <AnnouncementList 
+        title="通知公告"
+        :list="announcementList"
+        more-link="#"
+        from="home"
+      />
     </div>
   </div>
 </template>
 
 <script>
 import { Calendar, Lock, Tools } from '@element-plus/icons-vue'
+import AnnouncementList from '@/components/AnnouncementList.vue'
 
 export default {
   name: 'Home',
   components: {
     Calendar,
     Lock,
-    Tools
+    Tools,
+    AnnouncementList
+  },
+  methods: {
+    handleNewsClick(news) {
+      if (!news.id) {
+        console.warn('新闻项缺少 ID，无法跳转')
+        return
+      }
+      // 首页的新闻，from 参数设置为 "home"
+      this.$router.push({
+        path: `/detail/news/${news.id}`,
+        query: { from: 'home' }
+      })
+    },
+    handleServiceClick(service) {
+      if (service.url) {
+        window.open(service.url, '_blank')
+      }
+    },
+    handleCarouselClick(item) {
+      if (!item.id) {
+        console.warn('轮播图项缺少 ID，无法跳转')
+        return
+      }
+      // 首页的轮播图，from 参数设置为 "home"
+      this.$router.push({
+        path: `/detail/news/${item.id}`,
+        query: { from: 'home' }
+      })
+    },
+    handleViewMoreNews() {
+      // 跳转到通用列表页面，显示所有新闻
+      this.$router.push({
+        path: '/common-list',
+        query: { type: 'news', from: 'home' }
+      })
+    },
+    handleViewMoreAnnouncement() {
+      // 跳转到通用列表页面，显示所有公告
+      this.$router.push({
+        path: '/common-list',
+        query: { type: 'announcement', from: 'home' }
+      })
+    }
   },
   data() {
     return {
       carouselItems: [
         {
+          id: '1',
           image: 'https://guanwang.makabaka.ltd/uploads/20251114/89478336803a8c829b418cdfb19b769c.jpg',
           title: '2025年东南大学教育部YES项目艺术与媒介国际暑期学校'
         },
         {
+          id: '2',
           image: 'https://guanwang.makabaka.ltd/uploads/20251114/d78356969635624a85008c826595f8a6.png',
           title: '李迎成教授荣获2023年度中国城市规划学会青年科技奖'
         },
         {
+          id: '3',
           image: 'https://guanwang.makabaka.ltd/uploads/20250904/25ff9f802341defe3844aee5e555e51c.jpg',
           title: '从伟大抗战精神中汲取前行力量'
         }
       ],
       newsList: [
         {
+          id: '1',
           day: '13',
           month: '10月',
           title: '2025年东南大学教育部YES项目艺术与媒介国际暑期学校圆满结营',
           description: '2025年东南大学教育部YES项目艺术与媒介国际暑期学校于近日圆满结营，来自多个国家的学员参与了此次学习交流活动。'
         },
         {
+          id: '2',
           day: '12',
           month: '10月',
           title: '李迎成教授荣获2023年度中国城市规划学会青年科技奖',
           description: '李迎成教授凭借在城乡规划领域的突出贡献，荣获2023年度中国城市规划学会青年科技奖。'
         },
         {
+          id: '3',
           day: '11',
           month: '10月',
           title: '"2025教育部YES项目艺术与媒介国际暑期学校"开营',
           description: '2025教育部YES项目艺术与媒介国际暑期学校正式开营，来自世界各地的学员齐聚一堂，共同开启学习交流之旅。'
         },
         {
+          id: '4',
           day: '10',
           month: '10月',
           title: '从伟大抗战精神中汲取前行力量!纪念大会引发东南大学师生热烈反响',
@@ -138,25 +186,30 @@ export default {
       serviceList: [
         {
           name: '实验设备共享借用',
-          iconComponent: Tools
+          iconComponent: Tools,
+          url: 'https://jzxy.seu.edu.cn/wpjy/'
         },
         {
           name: '实验申请与安全准入',
-          iconComponent: Lock
+          iconComponent: Lock,
+          url: 'https://10.201.0.173:8443/lspcp-web/board'
         }
       ],
       announcementList: [
         {
+          id: '1',
           title: '关于成立建筑学院实验教学中心的通知',
           description: '关于成立建筑学院实验教学中心的通知',
           date: '2025-09-09'
         },
         {
+          id: '2',
           title: '关于印发《建筑学院实验室安全奖惩实施细则》的通知',
           description: '关于印发《建筑学院实验室安全奖惩实施细则》的通知',
           date: '2025-09-09'
         },
         {
+          id: '3',
           title: '关于调整建筑学院实验室安全领导小组成员及其职责分工的通知',
           description: '关于调整建筑学院实验室安全领导小组成员及其职责分工的通知',
           date: '2025-09-04'
@@ -251,6 +304,12 @@ export default {
   height: 100%;
   object-fit: cover;
   display: block;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.carousel-image:hover {
+  opacity: 0.9;
 }
 
 .page-container {
@@ -409,121 +468,5 @@ export default {
   line-height: 1.5;
 }
 
-.announcement-section {
-  margin: 0px 0 20px;
-  padding: 20px;
-  background-color: #fff;
-  width: 1580px;
-}
-
-.announcement-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
-.announcement-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #ffd700;
-  display: inline-block;
-}
-.announcement-title h3 {
-    display: inline-block;
-}
-
-.announcement-more-btn {
-  background-color: #ffd700;
-  color: #333;
-  padding: 8px 20px;
-  text-decoration: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s;
-}
-
-.announcement-more-btn:hover {
-  background-color: #ffed4e;
-}
-
-.announcement-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.announcement-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 20px 0;
-  text-decoration: none;
-  color: inherit;
-  transition: padding-left 0.3s;
-  cursor: pointer;
-  position: relative;
-  border-bottom: 1px solid #eee;
-}
-
-.announcement-item:last-child {
-  border-bottom: none;
-}
-
-.announcement-item:hover {
-  padding-left: 5px;
-}
-
-.announcement-item:hover .announcement-item-title {
-  color: #ffd700;
-}
-
-.announcement-content {
-  flex: 1;
-  padding-right: 20px;
-}
-
-.announcement-item-title {
-    display: flex;
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  font-weight: bold;
-  color: #333;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #ffd700;
-  width: 100%;
-  transition: color 0.3s;
-  justify-content: space-between;
-
-}
-
-.announcement-item-desc {
-  margin: 8px 0;
-  font-size: 14px;
-  color: #666;
-  line-height: 1.6;
-}
-
-.announcement-item-link {
-  display: inline-block;
-  margin-top: 8px;
-  font-size: 14px;
-  color: #333;
-  text-decoration: none;
-}
-
-.announcement-date {
-    display: inline;
-  font-size: 14px;
-  color: #999;
-  white-space: nowrap;
-  flex-shrink: 0;
-  padding: 5px 15px;
-  border-radius: 4px;
-}
 </style>
 

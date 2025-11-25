@@ -1,0 +1,45 @@
+{
+  "3": {
+    "title": "实验仪器",
+    "categories": ["分析仪器", "测量仪器", "实验设备", "其他"],
+    "items": [
+      {
+        "id": 1,
+        "name": "高效液相色谱仪",
+        "description": "用于化学分析和检测的高精度仪器",
+        "category": "分析仪器",
+        "image": "https://via.placeholder.com/300x200",
+        "specifications": "检测精度：0.1ppm，检测范围：0-1000ppm",
+        "status": "可用"
+      },
+      {
+        "id": 2,
+        "name": "电子显微镜",
+        "description": "高分辨率电子显微镜，适用于材料科学和生物学研究",
+        "category": "测量仪器",
+        "image": "https://via.placeholder.com/300x200",
+        "specifications": "放大倍数：1000-100000倍，分辨率：1nm",
+        "status": "可用"
+      },
+      {
+        "id": 3,
+        "name": "光谱分析仪",
+        "description": "用于物质成分分析的光谱仪器",
+        "category": "分析仪器",
+        "image": "https://via.placeholder.com/300x200",
+        "specifications": "波长范围：200-800nm，精度：±0.5nm",
+        "status": "可用"
+      },
+      {
+        "id": 4,
+        "name": "恒温培养箱",
+        "description": "用于细胞培养和微生物培养的恒温设备",
+        "category": "实验设备",
+        "image": "https://via.placeholder.com/300x200",
+        "specifications": "温度范围：室温+5℃-60℃，控温精度：±0.5℃",
+        "status": "可用"
+      }
+    ]
+  }
+}
+

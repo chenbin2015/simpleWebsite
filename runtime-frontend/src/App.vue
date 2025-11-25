@@ -31,8 +31,8 @@
                     <template #title>{{ menu.name }}</template>
                     <el-menu-item 
                       v-for="child in menu.children" 
-                      :key="child.id || child.name"
-                      :index="`${menu.name}-${child.name}`"
+                      :key="child.key"
+                      :index="`${menu.name}-${child.key}`"
                     >
                       {{ child.name }}
                     </el-menu-item>
@@ -62,41 +62,42 @@
 
 <script>
 import Footer from './components/Footer.vue'
+import { menuGroups, getDefaultRoutePath, getMenuKeyByPageType } from '@/config/menuConfig'
+import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
 
 export default {
   name: 'App',
   components: {
     Footer
   },
+  created() {
+    console.log('=== App.vue created ===')
+  },
   computed: {
     topMenus() {
       const result = []
-      let currentTopMenu = null
       
-      this.menus.forEach(menu => {
-        if (menu.trim() === '') return
+      this.menus.forEach(menuName => {
+        if (menuName.trim() === '') return
         
-        if (menu.startsWith('--')) {
-          // 二级菜单（已废弃，现在从接口获取）
-          // 这里不再处理，二级菜单从接口获取
-        } else {
-          // 一级菜单
-          if (currentTopMenu) {
-            result.push(currentTopMenu)
-          }
-          const menuName = menu.trim()
-          currentTopMenu = { 
-            name: menuName,
-            path: this.menuRouteMap[menuName] || '',
-            children: this.subMenus[menuName] || [] // 从接口获取的二级菜单
-          }
+        const rootType = this.menuNameToRootType[menuName]
+        let children = []
+        
+        // 如果有对应的 rootType，从 menuGroups 获取子菜单
+        if (rootType && menuGroups[rootType]) {
+          children = menuGroups[rootType].items.map(item => ({
+            key: item.key,
+            name: item.name
+          }))
         }
+        
+        result.push({
+          name: menuName,
+          path: this.menuRouteMap[menuName] || '',
+          rootType: rootType,
+          children: children
+        })
       })
-      
-      // 添加最后一个菜单
-      if (currentTopMenu) {
-        result.push(currentTopMenu)
-      }
       
       return result
     }
@@ -113,47 +114,30 @@ export default {
         '安全管理',
         '科普教育'
       ],
-      // 模拟的二级菜单数据，key为一级菜单名称，value为包含id和type的数组
-      subMenus: {
-        '实验教学': [
-          { id: 1, name: '课程体系', type: 'course' },
-          { id: 2, name: '实验课程', type: 'course' }
-        ],
-        '实验资源': [
-          { id: 3, name: '实验仪器', type: 'resource' },
-          { id: 4, name: '实验空间', type: 'resource' },
-          { id: 5, name: '开放共享', type: 'resource' }
-        ],
-        '建设成效': [
-          { id: 6, name: '实验教学改革', type: 'achievement' },
-          { id: 7, name: '科研创新成果', type: 'achievement' },
-          { id: 8, name: '实验环境与能力', type: 'achievement' }
-        ],
-        '安全管理': [
-          { id: 9, name: '安全教育', type: 'safety' },
-          { id: 10, name: '安全准入', type: 'safety' },
-          { id: 11, name: '管理制度', type: 'safety' }
-        ]
+      // 菜单名称到 rootType 的映射
+      menuNameToRootType: {
+        '实验教学': 'experiment-teaching',
+        '实验资源': 'experiment-resources',
+        '建设成效': 'construction-results',
+        '安全管理': 'safety-management'
       },
       // 菜单名称到路由路径的映射（仅用于一级菜单）
       menuRouteMap: {
         '首页': '/',
         '中心概况': '/center-overview',
-        '实验教学': '/experimental-teaching',
-        '实验资源': '/experimental-resources',
-        '建设成效': '/construction-results',
-        '安全管理': '/safety-management',
-        '科普教育': '/science-education'
+        '科普教育': '/popular-science'
       }
     }
   },
-  mounted() {
+  async mounted() {
+    console.log('=== App.vue mounted ===')
     // 根据当前路由设置激活菜单
-    this.updateActiveMenu()
+    await this.updateActiveMenu()
     
     // 监听路由变化
-    this.$router.afterEach(() => {
-      this.updateActiveMenu()
+    this.$router.afterEach(async (to, from) => {
+      console.log('=== 路由变化 ===', { to: to.path, from: from.path })
+      await this.updateActiveMenu()
     })
     
     // 隐藏"更多"菜单按钮
@@ -181,9 +165,13 @@ export default {
     })
   },
   methods: {
-    updateActiveMenu() {
+    async updateActiveMenu() {
+      console.log('=== updateActiveMenu 被调用 ===')
+      console.log('当前路由:', this.$route.path)
+      console.log('查询参数:', this.$route.query)
       const currentPath = this.$route.path
-      // 根据路径找到对应的菜单名称
+      
+      // 检查一级菜单
       for (const [menuName, path] of Object.entries(this.menuRouteMap)) {
         if (path === currentPath) {
           this.activeMenu = menuName
@@ -191,21 +179,134 @@ export default {
         }
       }
       
-      // 检查是否是二级菜单的路由
-      // 二级菜单路由格式可能是 /menu/:id 或 /menu/:type/:id
+      // 检查是否是动态路由 /dynamic/:rootType/:type/:id
       const pathParts = currentPath.split('/').filter(p => p)
-      if (pathParts.length >= 2) {
-        // 尝试从路由参数中获取菜单信息
-        const menuId = this.$route.params.id
-        const menuType = this.$route.params.type
-        if (menuId) {
-          // 查找对应的二级菜单
-          for (const [parentMenu, children] of Object.entries(this.subMenus)) {
-            const child = children.find(c => c.id == menuId)
-            if (child) {
-              this.activeMenu = `${parentMenu}-${child.name}`
+      console.log('pathParts:', pathParts, 'length:', pathParts.length)
+      if (pathParts.length >= 4 && pathParts[0] === 'dynamic') {
+        console.log('进入动态路由处理')
+        const rootType = pathParts[1]
+        const pageType = pathParts[2] // 这是 pageType（如 news-list, product-list 等）
+        
+        // 根据 rootType 和 pageType 找到对应的 menuKey
+        const menuKey = getMenuKeyByPageType(rootType, pageType)
+        if (menuKey) {
+          // 根据 rootType 找到对应的菜单名称
+          for (const [menuName, rt] of Object.entries(this.menuNameToRootType)) {
+            if (rt === rootType) {
+              // 使用 menuKey 来设置 activeMenu
+              this.activeMenu = `${menuName}-${menuKey}`
               return
             }
+          }
+        }
+      }
+      
+      // 检查是否是通用列表页路由 /common-list
+      if (currentPath === '/common-list') {
+        console.log('✓ 进入通用列表页路由处理逻辑')
+        const from = this.$route.query.from
+        console.log('from 参数:', from)
+        if (from) {
+          if (from === 'popular-science') {
+            console.log('设置菜单为: 科普教育')
+            this.activeMenu = '科普教育'
+            return
+          }
+          
+          if (from === 'home') {
+            console.log('设置菜单为: 首页')
+            this.activeMenu = '首页'
+            return
+          }
+          
+          // 如果是 rootType-id 格式，解析并设置菜单
+          const allRootTypes = Object.values(this.menuNameToRootType)
+          const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
+          
+          for (const rootType of sortedRootTypes) {
+            if (from.startsWith(rootType + '-')) {
+              for (const [menuName, rt] of Object.entries(this.menuNameToRootType)) {
+                if (rt === rootType) {
+                  // 对于通用列表页，只高亮一级菜单
+                  this.activeMenu = menuName
+                  console.log('设置菜单为:', menuName)
+                  return
+                }
+              }
+            }
+          }
+        }
+        // 如果没有 from 参数或无法匹配，默认设置为首页
+        this.activeMenu = '首页'
+        return
+      }
+      
+      // 检查是否是详情页路由 /detail/:type/:id
+      console.log('检查详情页路由，pathParts.length:', pathParts.length, 'pathParts[0]:', pathParts[0])
+      console.log('条件判断:', pathParts.length >= 3, pathParts[0] === 'detail')
+      if (pathParts.length >= 3 && pathParts[0] === 'detail') {
+        console.log('✓ 进入详情页路由处理逻辑')
+        // 从查询参数中获取 from
+        const from = this.$route.query.from
+        console.log('from 参数:', from, 'type:', typeof from)
+        if (from) {
+          console.log('from 存在，继续处理')
+          // from 格式可能是 "rootType-id" 或 "popular-science" 或 "home"
+          if (from === 'popular-science') {
+            console.log('设置菜单为: 科普教育')
+            this.activeMenu = '科普教育'
+            return
+          }
+          
+          if (from === 'home') {
+            console.log('设置菜单为: 首页')
+            this.activeMenu = '首页'
+            return
+          }
+          
+          console.log('from 不是特殊值，开始解析 fromParts')
+          // 解析 from 参数：格式为 "rootType-id"
+          // 由于 rootType 可能包含 "-"（如 experiment-teaching），需要从所有可能的 rootType 中匹配
+          // 从路由参数获取 id（更准确）
+          const routeId = pathParts[2] // /detail/:type/:id 中的 id
+          console.log('路由中的 id:', routeId)
+          
+          // 尝试从 from 中匹配 rootType
+          // 方法：遍历所有可能的 rootType，找到最长的匹配
+          let matchedRootType = null
+          let matchedMenuName = null
+          const allRootTypes = Object.values(this.menuNameToRootType)
+          
+          // 按长度从长到短排序，优先匹配更长的 rootType
+          const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
+          
+          console.log('所有可能的 rootType:', sortedRootTypes)
+          for (const rootType of sortedRootTypes) {
+            // 检查 from 是否以 rootType 开头
+            if (from.startsWith(rootType + '-')) {
+              matchedRootType = rootType
+              // 找到对应的菜单名称
+              for (const [menuName, rt] of Object.entries(this.menuNameToRootType)) {
+                if (rt === rootType) {
+                  matchedMenuName = menuName
+                  break
+                }
+              }
+              console.log('✓ 匹配到 rootType:', rootType, '菜单名称:', matchedMenuName)
+              break
+            }
+          }
+          
+          if (matchedRootType && matchedMenuName) {
+            const actualId = routeId || from.substring(matchedRootType.length + 1) // 去掉 rootType- 前缀
+            console.log('实际使用的 id:', actualId)
+            console.log('调用 findPageTypeAndSetMenu')
+            // 异步查找 pageType 并设置菜单，等待完成
+            await this.findPageTypeAndSetMenu(actualId, matchedRootType, matchedMenuName)
+            console.log('findPageTypeAndSetMenu 完成，activeMenu:', this.activeMenu)
+            return
+          } else {
+            console.warn('未找到匹配的 rootType，from:', from)
           }
         }
       }
@@ -213,28 +314,85 @@ export default {
       // 如果没找到，默认设置为首页
       this.activeMenu = '首页'
     },
+    async findPageTypeAndSetMenu(id, rootType, menuName) {
+      console.log('=== findPageTypeAndSetMenu 被调用 ===')
+      console.log('参数:', { id, rootType, menuName })
+      try {
+        // 根据 id 查找 pageType
+        console.log('开始查找 pageType，id:', id)
+        const pageType = await getPageTypeById(id)
+        console.log('找到 pageType:', pageType)
+        if (pageType) {
+          // 根据 id 查找 categoryKey（数据分类的 key，对应菜单项的 defaultId）
+          console.log('开始查找 categoryKey，id:', id)
+          const categoryKey = await getCategoryKeyById(id)
+          console.log('找到 categoryKey:', categoryKey)
+          
+          let menuKey = null
+          if (categoryKey) {
+            // 根据 categoryKey（对应 defaultId）找到对应的菜单项
+            const menuGroup = menuGroups[rootType]
+            if (menuGroup) {
+              const menuItem = menuGroup.items.find(item => item.defaultId === categoryKey)
+              if (menuItem) {
+                menuKey = menuItem.key
+                console.log('通过 categoryKey 找到 menuKey:', menuKey)
+              }
+            }
+          }
+          
+          // 如果通过 categoryKey 没找到，回退到使用 pageType 查找
+          if (!menuKey) {
+            console.log('通过 categoryKey 未找到，使用 pageType 查找')
+            menuKey = getMenuKeyByPageType(rootType, pageType)
+            console.log('通过 pageType 找到 menuKey:', menuKey)
+          }
+          
+          if (menuKey) {
+            const activeMenuValue = `${menuName}-${menuKey}`
+            console.log('设置 activeMenu 为:', activeMenuValue)
+            this.activeMenu = activeMenuValue
+            return
+          } else {
+            console.warn('未找到 menuKey，rootType:', rootType, 'pageType:', pageType, 'categoryKey:', categoryKey)
+          }
+        } else {
+          console.warn('未找到 pageType，id:', id)
+        }
+        
+        // 如果找不到 pageType 或 menuKey，设置为第一个子菜单
+        console.log('回退到第一个子菜单')
+        const menuGroup = menuGroups[rootType]
+        if (menuGroup && menuGroup.items && menuGroup.items.length > 0) {
+          this.activeMenu = `${menuName}-${menuGroup.items[0].key}`
+        } else {
+          this.activeMenu = menuName
+        }
+      } catch (err) {
+        console.error('Failed to find pageType and set menu:', err)
+        // 出错时设置为第一个子菜单
+        const menuGroup = menuGroups[rootType]
+        if (menuGroup && menuGroup.items && menuGroup.items.length > 0) {
+          this.activeMenu = `${menuName}-${menuGroup.items[0].key}`
+        } else {
+          this.activeMenu = menuName
+        }
+      }
+    },
     handleMenuSelect(index) {
-      // index 可能是 "菜单名" 或 "父菜单-子菜单名称" 格式
-      let menuName = index
-      let isSubMenu = false
-      let subMenuData = null
-      
+      // index 可能是 "菜单名" 或 "父菜单-子菜单key(type)" 格式
       if (index.includes('-')) {
-        // 如果是子菜单，格式是 "父菜单-子菜单名称"
+        // 如果是子菜单，格式是 "父菜单-子菜单key(type)"
         const firstDashIndex = index.indexOf('-')
         if (firstDashIndex !== -1) {
           const parentMenu = index.substring(0, firstDashIndex)
-          const childName = index.substring(firstDashIndex + 1)
+          const childKey = index.substring(firstDashIndex + 1) // 这是 menuKey
           
-          // 查找对应的二级菜单数据
-          const children = this.subMenus[parentMenu] || []
-          subMenuData = children.find(c => c.name === childName)
-          
-          if (subMenuData) {
-            isSubMenu = true
-            // 根据id和type构建路由
-            // 路由格式：/menu/:type/:id 或 /menu/:id
-            const routePath = `/menu/${subMenuData.type}/${subMenuData.id}`
+          // 获取 rootType
+          const rootType = this.menuNameToRootType[parentMenu]
+          if (rootType) {
+            // 使用 getDefaultRoutePath 生成路由路径，childKey 是 menuKey
+            const routePath = getDefaultRoutePath(rootType, childKey)
             this.$router.push(routePath)
             this.activeMenu = index
             return
@@ -243,10 +401,23 @@ export default {
       }
       
       // 一级菜单跳转
-      const routePath = this.menuRouteMap[menuName]
+      // 先检查是否有子菜单
+      const menuItem = this.topMenus.find(menu => menu.name === index)
+      if (menuItem && menuItem.children && menuItem.children.length > 0) {
+        // 如果有子菜单，跳转到第一个子菜单
+        const rootType = menuItem.rootType
+        const firstChildKey = menuItem.children[0].key
+        const routePath = getDefaultRoutePath(rootType, firstChildKey)
+        this.$router.push(routePath)
+        this.activeMenu = `${index}-${firstChildKey}`
+        return
+      }
+      
+      // 没有子菜单的一级菜单跳转
+      const routePath = this.menuRouteMap[index]
       if (routePath) {
         this.$router.push(routePath)
-        this.activeMenu = menuName
+        this.activeMenu = index
       }
     }
   }

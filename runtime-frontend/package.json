@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "bash deploy.sh",
+    "deploy:sh": "bash deploy.sh",
+    "deploy:ps1": "powershell -ExecutionPolicy Bypass -File deploy.ps1"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
