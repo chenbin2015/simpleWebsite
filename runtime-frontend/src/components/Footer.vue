@@ -170,7 +170,6 @@ export default {
 /* 底部版权信息 */
 .footer-bottom {
   text-align: center;
-  padding-top: 20px;
 }
 
 .footer-bottom p {
