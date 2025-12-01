@@ -12,20 +12,27 @@ import java.util.List;
 
 @Repository
 public interface PopularScienceAnnouncementRepository extends JpaRepository<PopularScienceAnnouncement, Long> {
-    @Query("SELECT a FROM PopularScienceAnnouncement a WHERE a.status = 'published' ORDER BY a.publishTime DESC")
+    @Query("SELECT a FROM PopularScienceAnnouncement a WHERE a.deleted = false AND a.status = 'published' ORDER BY a.publishTime DESC")
     List<PopularScienceAnnouncement> findAllPublished();
     
-    @Query("SELECT a FROM PopularScienceAnnouncement a ORDER BY a.createdAt DESC")
+    @Query("SELECT a FROM PopularScienceAnnouncement a WHERE a.deleted = false ORDER BY a.createdAt DESC")
     List<PopularScienceAnnouncement> findAllOrderByCreatedAt();
     
-    Page<PopularScienceAnnouncement> findByStatus(String status, Pageable pageable);
+    @Query("SELECT a FROM PopularScienceAnnouncement a WHERE a.deleted = false AND (:status IS NULL OR a.status = :status)")
+    Page<PopularScienceAnnouncement> findByStatus(@Param("status") String status, Pageable pageable);
     
-    @Query("SELECT a FROM PopularScienceAnnouncement a WHERE " +
+    @Query("SELECT a FROM PopularScienceAnnouncement a WHERE a.deleted = false AND " +
            "(:status IS NULL OR a.status = :status) AND " +
            "(:keyword IS NULL OR a.title LIKE %:keyword% OR a.content LIKE %:keyword%) " +
            "ORDER BY a.publishTime DESC, a.createdAt DESC")
     Page<PopularScienceAnnouncement> findByStatusAndKeyword(@Param("status") String status, 
                                                             @Param("keyword") String keyword, 
                                                             Pageable pageable);
+    
+    /**
+     * 根据ID查找未删除的公告
+     */
+    @Query("SELECT a FROM PopularScienceAnnouncement a WHERE a.id = :id AND a.deleted = false")
+    java.util.Optional<PopularScienceAnnouncement> findByIdAndDeletedFalse(@Param("id") Long id);
 }
 

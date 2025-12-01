@@ -9,7 +9,7 @@
       ref="bannerUploadRef"
       :auto-upload="false"
       :on-change="handleBannerChange"
-      :on-remove="handleBannerRemove"
+      :before-remove="handleBannerBeforeRemove"
       :on-exceed="handleBannerExceed"
       :file-list="bannerFileList"
       list-type="picture-card"
@@ -222,7 +222,7 @@ const handleBannerExceed = () => {
   ElMessage.warning('Banner图只能上传一张，请先删除现有图片')
 }
 
-const handleBannerRemove = async () => {
+const handleBannerBeforeRemove = async (file) => {
   try {
     await ElMessageBox.confirm('确定要删除这张Banner图吗？', '提示', {
       type: 'warning'
@@ -231,23 +231,25 @@ const handleBannerRemove = async () => {
     // 执行后端删除操作
     const response = await homeApi.deleteBanner()
     if (response.success) {
-      // 删除成功后，清空文件列表
-      bannerFileList.value = []
-      if (bannerUploadRef.value) {
-        bannerUploadRef.value.clearFiles()
-      }
+      // 删除成功，返回 true 允许删除
       ElMessage.success('删除成功')
+      return true
     } else {
       ElMessage.error(response.message || '删除失败')
-      // 删除失败，重新加载
+      // 删除失败，返回 false 阻止删除，并重新加载
       await loadBanner()
+      return false
     }
   } catch (error) {
-    if (error !== 'cancel') {
+    if (error === 'cancel') {
+      // 用户取消，返回 false 阻止删除
+      return false
+    } else {
       console.error('删除Banner图失败:', error)
       ElMessage.error('删除Banner图失败')
-      // 删除失败，重新加载
+      // 删除失败，返回 false 阻止删除，并重新加载
       await loadBanner()
+      return false
     }
   }
 }

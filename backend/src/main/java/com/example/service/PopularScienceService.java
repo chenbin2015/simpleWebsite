@@ -2,6 +2,7 @@ package com.example.service;
 
 import com.example.entity.*;
 import com.example.repository.*;
+import com.example.util.FileUploadUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -9,11 +10,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -94,12 +97,12 @@ public class PopularScienceService {
     
     public Map<String, Object> getBanner() {
         Map<String, Object> result = new HashMap<>();
-        List<PopularScienceBanner> banners = bannerRepository.findAll();
-        if (banners.isEmpty()) {
+        Optional<PopularScienceBanner> bannerOpt = bannerRepository.findFirstNotDeleted();
+        if (bannerOpt.isEmpty()) {
             result.put("success", true);
             result.put("data", null);
         } else {
-            PopularScienceBanner banner = banners.get(0);
+            PopularScienceBanner banner = bannerOpt.get();
             Map<String, Object> bannerData = new HashMap<>();
             bannerData.put("id", banner.getId());
             bannerData.put("imageUrl", banner.getImageUrl());
@@ -114,26 +117,73 @@ public class PopularScienceService {
     @Transactional
     public Map<String, Object> saveBanner(String imageUrl) {
         Map<String, Object> result = new HashMap<>();
-        bannerRepository.deleteAll();
-        PopularScienceBanner banner = new PopularScienceBanner(imageUrl);
-        banner = bannerRepository.save(banner);
         
-        Map<String, Object> bannerData = new HashMap<>();
-        bannerData.put("id", banner.getId());
-        bannerData.put("imageUrl", banner.getImageUrl());
-        bannerData.put("createdAt", banner.getCreatedAt());
-        bannerData.put("updatedAt", banner.getUpdatedAt());
-        
-        result.put("success", true);
-        result.put("message", "保存成功");
-        result.put("data", bannerData);
-        return result;
+        try {
+            String finalImageUrl = null;
+            
+            // 如果imageUrl是base64，需要先转换为文件
+            if (imageUrl != null && !imageUrl.trim().isEmpty()) {
+                if (imageUrl.startsWith("data:image/")) {
+                    // Base64格式，转换为文件保存
+                    finalImageUrl = FileUploadUtil.saveBase64Image(imageUrl);
+                } else {
+                    // 普通URL，直接使用
+                    finalImageUrl = imageUrl.trim();
+                }
+            }
+            
+            if (finalImageUrl == null) {
+                result.put("success", false);
+                result.put("message", "图片不能为空");
+                return result;
+            }
+            
+            // Banner只有一张，先逻辑删除旧的
+            List<PopularScienceBanner> oldBanners = bannerRepository.findAllNotDeleted();
+            LocalDateTime now = LocalDateTime.now();
+            for (PopularScienceBanner oldBanner : oldBanners) {
+                oldBanner.setDeleted(true);
+                oldBanner.setDeletedAt(now);
+                bannerRepository.save(oldBanner);
+            }
+            
+            PopularScienceBanner banner = new PopularScienceBanner(finalImageUrl);
+            banner = bannerRepository.save(banner);
+            
+            Map<String, Object> bannerData = new HashMap<>();
+            bannerData.put("id", banner.getId());
+            bannerData.put("imageUrl", banner.getImageUrl());
+            bannerData.put("createdAt", banner.getCreatedAt());
+            bannerData.put("updatedAt", banner.getUpdatedAt());
+            
+            result.put("success", true);
+            result.put("message", "保存成功");
+            result.put("data", bannerData);
+            return result;
+        } catch (IOException e) {
+            result.put("success", false);
+            result.put("message", "图片保存失败: " + e.getMessage());
+            return result;
+        }
     }
     
     @Transactional
     public Map<String, Object> deleteBanner() {
         Map<String, Object> result = new HashMap<>();
-        bannerRepository.deleteAll();
+        List<PopularScienceBanner> banners = bannerRepository.findAllNotDeleted();
+        if (banners.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "Banner不存在");
+            return result;
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        for (PopularScienceBanner banner : banners) {
+            banner.setDeleted(true);
+            banner.setDeletedAt(now);
+            bannerRepository.save(banner);
+        }
+        
         result.put("success", true);
         result.put("message", "删除成功");
         return result;
@@ -165,33 +215,69 @@ public class PopularScienceService {
     public Map<String, Object> saveCarouselList(List<Map<String, Object>> carouselList) {
         Map<String, Object> result = new HashMap<>();
         
-        // 先删除所有现有的轮播图
-        carouselRepository.deleteAll();
-        
-        for (Map<String, Object> item : carouselList) {
-            String image = (String) item.get("image");
-            String title = (String) item.get("title");
-            String link = item.get("link") != null ? (String) item.get("link") : "";
-            Integer sort = item.get("sort") != null ? ((Number) item.get("sort")).intValue() : 0;
+        try {
+            // 先逻辑删除所有现有的未删除轮播图
+            List<PopularScienceCarousel> existingCarousels = carouselRepository.findAllNotDeleted();
+            LocalDateTime now = LocalDateTime.now();
+            for (PopularScienceCarousel carousel : existingCarousels) {
+                carousel.setDeleted(true);
+                carousel.setDeletedAt(now);
+                carouselRepository.save(carousel);
+            }
             
-            PopularScienceCarousel carousel = new PopularScienceCarousel(image, title, link, sort);
-            carouselRepository.save(carousel);
+            for (Map<String, Object> item : carouselList) {
+                String image = (String) item.get("image");
+                String title = (String) item.get("title");
+                String link = item.get("link") != null ? (String) item.get("link") : "";
+                Integer sort = item.get("sort") != null ? ((Number) item.get("sort")).intValue() : 0;
+                
+                // 处理图片：如果是Base64，转换为文件保存
+                String finalImageUrl = null;
+                if (image != null && !image.trim().isEmpty()) {
+                    if (image.startsWith("data:image/")) {
+                        // Base64格式，转换为文件保存
+                        finalImageUrl = FileUploadUtil.saveBase64Image(image);
+                    } else {
+                        // 普通URL，直接使用
+                        finalImageUrl = image.trim();
+                    }
+                }
+                
+                if (finalImageUrl == null) {
+                    result.put("success", false);
+                    result.put("message", "图片不能为空");
+                    return result;
+                }
+                
+                PopularScienceCarousel carousel = new PopularScienceCarousel(finalImageUrl, title, link, sort);
+                carouselRepository.save(carousel);
+            }
+            
+            result.put("success", true);
+            result.put("message", "保存成功");
+            return result;
+        } catch (IOException e) {
+            result.put("success", false);
+            result.put("message", "图片保存失败: " + e.getMessage());
+            return result;
         }
-        
-        result.put("success", true);
-        result.put("message", "保存成功");
-        return result;
     }
     
     @Transactional
     public Map<String, Object> deleteCarousel(Long id) {
         Map<String, Object> result = new HashMap<>();
-        if (!carouselRepository.existsById(id)) {
+        java.util.Optional<PopularScienceCarousel> carouselOpt = carouselRepository.findByIdAndDeletedFalse(id);
+        if (carouselOpt.isEmpty()) {
             result.put("success", false);
             result.put("message", "轮播图不存在");
             return result;
         }
-        carouselRepository.deleteById(id);
+        
+        PopularScienceCarousel carousel = carouselOpt.get();
+        carousel.setDeleted(true);
+        carousel.setDeletedAt(LocalDateTime.now());
+        carouselRepository.save(carousel);
+        
         result.put("success", true);
         result.put("message", "删除成功");
         return result;
@@ -206,7 +292,8 @@ public class PopularScienceService {
         Page<PopularScienceArticle> articlePage;
         
         if ((status == null || status.isEmpty()) && (keyword == null || keyword.isEmpty())) {
-            articlePage = articleRepository.findAll(pageable);
+            // 使用Repository的自定义查询方法，过滤已删除的记录
+            articlePage = articleRepository.findByStatus(null, pageable);
         } else {
             articlePage = articleRepository.findByStatusAndKeyword(status, keyword, pageable);
         }
@@ -236,12 +323,13 @@ public class PopularScienceService {
     
     public Map<String, Object> getArticleById(Long id) {
         Map<String, Object> result = new HashMap<>();
-        PopularScienceArticle article = articleRepository.findById(id).orElse(null);
-        if (article == null) {
+        java.util.Optional<PopularScienceArticle> articleOpt = articleRepository.findByIdAndDeletedFalse(id);
+        if (articleOpt.isEmpty()) {
             result.put("success", false);
             result.put("message", "新闻不存在");
             return result;
         }
+        PopularScienceArticle article = articleOpt.get();
         
         Map<String, Object> data = new HashMap<>();
         data.put("id", article.getId());
@@ -263,42 +351,55 @@ public class PopularScienceService {
     public Map<String, Object> addArticle(Map<String, Object> data) {
         Map<String, Object> result = new HashMap<>();
         
-        String title = (String) data.get("title");
-        String author = (String) data.get("author");
-        String content = (String) data.get("content");
-        String tags = convertTagsToString(data.get("tags"));
-        String status = data.get("status") != null ? (String) data.get("status") : "draft";
-        
-        PopularScienceArticle article = new PopularScienceArticle(title, author, content, tags, status);
-        article = articleRepository.save(article);
-        
-        Map<String, Object> articleData = new HashMap<>();
-        articleData.put("id", article.getId());
-        articleData.put("title", article.getTitle());
-        articleData.put("author", article.getAuthor());
-        articleData.put("content", article.getContent());
-        articleData.put("tags", parseTagsFromString(article.getTags()));
-        articleData.put("status", article.getStatus());
-        articleData.put("publishTime", article.getPublishTime() != null ? article.getPublishTime().toString() : null);
-        articleData.put("createdAt", article.getCreatedAt());
-        articleData.put("updatedAt", article.getUpdatedAt());
-        
-        result.put("success", true);
-        result.put("message", "添加成功");
-        result.put("data", articleData);
-        return result;
+        try {
+            String title = (String) data.get("title");
+            String author = (String) data.get("author");
+            String content = (String) data.get("content");
+            String tags = convertTagsToString(data.get("tags"));
+            String status = data.get("status") != null ? (String) data.get("status") : "draft";
+            
+            // 处理内容中的Base64图片，转换为文件
+            String processedContent = content;
+            if (content != null && !content.isEmpty()) {
+                processedContent = FileUploadUtil.processHtmlImages(content);
+            }
+            
+            PopularScienceArticle article = new PopularScienceArticle(title, author, processedContent, tags, status);
+            article = articleRepository.save(article);
+            
+            Map<String, Object> articleData = new HashMap<>();
+            articleData.put("id", article.getId());
+            articleData.put("title", article.getTitle());
+            articleData.put("author", article.getAuthor());
+            articleData.put("content", article.getContent());
+            articleData.put("tags", parseTagsFromString(article.getTags()));
+            articleData.put("status", article.getStatus());
+            articleData.put("publishTime", article.getPublishTime() != null ? article.getPublishTime().toString() : null);
+            articleData.put("createdAt", article.getCreatedAt());
+            articleData.put("updatedAt", article.getUpdatedAt());
+            
+            result.put("success", true);
+            result.put("message", "添加成功");
+            result.put("data", articleData);
+            return result;
+        } catch (IOException e) {
+            result.put("success", false);
+            result.put("message", "处理内容中的图片失败: " + e.getMessage());
+            return result;
+        }
     }
     
     @Transactional
     public Map<String, Object> updateArticle(Long id, Map<String, Object> data) {
         Map<String, Object> result = new HashMap<>();
         
-        PopularScienceArticle article = articleRepository.findById(id).orElse(null);
-        if (article == null) {
+        java.util.Optional<PopularScienceArticle> articleOpt = articleRepository.findByIdAndDeletedFalse(id);
+        if (articleOpt.isEmpty()) {
             result.put("success", false);
             result.put("message", "新闻不存在");
             return result;
         }
+        PopularScienceArticle article = articleOpt.get();
         
         if (data.containsKey("title")) {
             article.setTitle((String) data.get("title"));
@@ -307,7 +408,18 @@ public class PopularScienceService {
             article.setAuthor((String) data.get("author"));
         }
         if (data.containsKey("content")) {
-            article.setContent((String) data.get("content"));
+            String content = (String) data.get("content");
+            // 处理内容中的Base64图片，转换为文件
+            if (content != null && !content.isEmpty()) {
+                try {
+                    content = FileUploadUtil.processHtmlImages(content);
+                } catch (IOException e) {
+                    result.put("success", false);
+                    result.put("message", "处理内容中的图片失败: " + e.getMessage());
+                    return result;
+                }
+            }
+            article.setContent(content);
         }
         if (data.containsKey("tags")) {
             article.setTags(convertTagsToString(data.get("tags")));
@@ -338,12 +450,18 @@ public class PopularScienceService {
     @Transactional
     public Map<String, Object> deleteArticle(Long id) {
         Map<String, Object> result = new HashMap<>();
-        if (!articleRepository.existsById(id)) {
+        java.util.Optional<PopularScienceArticle> articleOpt = articleRepository.findByIdAndDeletedFalse(id);
+        if (articleOpt.isEmpty()) {
             result.put("success", false);
             result.put("message", "新闻不存在");
             return result;
         }
-        articleRepository.deleteById(id);
+        
+        PopularScienceArticle article = articleOpt.get();
+        article.setDeleted(true);
+        article.setDeletedAt(LocalDateTime.now());
+        articleRepository.save(article);
+        
         result.put("success", true);
         result.put("message", "删除成功");
         return result;
@@ -358,7 +476,8 @@ public class PopularScienceService {
         Page<PopularScienceAnnouncement> announcementPage;
         
         if ((status == null || status.isEmpty()) && (keyword == null || keyword.isEmpty())) {
-            announcementPage = announcementRepository.findAll(pageable);
+            // 使用Repository的自定义查询方法，过滤已删除的记录
+            announcementPage = announcementRepository.findByStatus(null, pageable);
         } else {
             announcementPage = announcementRepository.findByStatusAndKeyword(status, keyword, pageable);
         }
@@ -386,12 +505,13 @@ public class PopularScienceService {
     
     public Map<String, Object> getAnnouncementById(Long id) {
         Map<String, Object> result = new HashMap<>();
-        PopularScienceAnnouncement announcement = announcementRepository.findById(id).orElse(null);
-        if (announcement == null) {
+        java.util.Optional<PopularScienceAnnouncement> announcementOpt = announcementRepository.findByIdAndDeletedFalse(id);
+        if (announcementOpt.isEmpty()) {
             result.put("success", false);
             result.put("message", "公告不存在");
             return result;
         }
+        PopularScienceAnnouncement announcement = announcementOpt.get();
         
         Map<String, Object> data = new HashMap<>();
         data.put("id", announcement.getId());
@@ -411,12 +531,19 @@ public class PopularScienceService {
     public Map<String, Object> addAnnouncement(Map<String, Object> data) {
         Map<String, Object> result = new HashMap<>();
         
-        String title = (String) data.get("title");
-        String content = (String) data.get("content");
-        String status = data.get("status") != null ? (String) data.get("status") : "draft";
-        
-        PopularScienceAnnouncement announcement = new PopularScienceAnnouncement(title, content, status);
-        announcement = announcementRepository.save(announcement);
+        try {
+            String title = (String) data.get("title");
+            String content = (String) data.get("content");
+            String status = data.get("status") != null ? (String) data.get("status") : "draft";
+            
+            // 处理内容中的Base64图片，转换为文件
+            String processedContent = content;
+            if (content != null && !content.isEmpty()) {
+                processedContent = FileUploadUtil.processHtmlImages(content);
+            }
+            
+            PopularScienceAnnouncement announcement = new PopularScienceAnnouncement(title, processedContent, status);
+            announcement = announcementRepository.save(announcement);
         
         Map<String, Object> announcementData = new HashMap<>();
         announcementData.put("id", announcement.getId());
@@ -427,59 +554,82 @@ public class PopularScienceService {
         announcementData.put("createdAt", announcement.getCreatedAt());
         announcementData.put("updatedAt", announcement.getUpdatedAt());
         
-        result.put("success", true);
-        result.put("message", "添加成功");
-        result.put("data", announcementData);
-        return result;
+            result.put("success", true);
+            result.put("message", "添加成功");
+            result.put("data", announcementData);
+            return result;
+        } catch (IOException e) {
+            result.put("success", false);
+            result.put("message", "处理内容中的图片失败: " + e.getMessage());
+            return result;
+        }
     }
     
     @Transactional
     public Map<String, Object> updateAnnouncement(Long id, Map<String, Object> data) {
         Map<String, Object> result = new HashMap<>();
         
-        PopularScienceAnnouncement announcement = announcementRepository.findById(id).orElse(null);
-        if (announcement == null) {
+        try {
+            java.util.Optional<PopularScienceAnnouncement> announcementOpt = announcementRepository.findByIdAndDeletedFalse(id);
+            if (announcementOpt.isEmpty()) {
+                result.put("success", false);
+                result.put("message", "公告不存在");
+                return result;
+            }
+            PopularScienceAnnouncement announcement = announcementOpt.get();
+            
+            if (data.containsKey("title")) {
+                announcement.setTitle((String) data.get("title"));
+            }
+            if (data.containsKey("content")) {
+                String content = (String) data.get("content");
+                // 处理内容中的Base64图片，转换为文件
+                if (content != null && !content.isEmpty()) {
+                    content = FileUploadUtil.processHtmlImages(content);
+                }
+                announcement.setContent(content);
+            }
+            if (data.containsKey("status")) {
+                announcement.setStatus((String) data.get("status"));
+            }
+            
+            announcement = announcementRepository.save(announcement);
+            
+            Map<String, Object> announcementData = new HashMap<>();
+            announcementData.put("id", announcement.getId());
+            announcementData.put("title", announcement.getTitle());
+            announcementData.put("content", announcement.getContent());
+            announcementData.put("status", announcement.getStatus());
+            announcementData.put("publishTime", announcement.getPublishTime() != null ? announcement.getPublishTime().toString() : null);
+            announcementData.put("createdAt", announcement.getCreatedAt());
+            announcementData.put("updatedAt", announcement.getUpdatedAt());
+            
+            result.put("success", true);
+            result.put("message", "更新成功");
+            result.put("data", announcementData);
+            return result;
+        } catch (IOException e) {
             result.put("success", false);
-            result.put("message", "公告不存在");
+            result.put("message", "处理内容中的图片失败: " + e.getMessage());
             return result;
         }
-        
-        if (data.containsKey("title")) {
-            announcement.setTitle((String) data.get("title"));
-        }
-        if (data.containsKey("content")) {
-            announcement.setContent((String) data.get("content"));
-        }
-        if (data.containsKey("status")) {
-            announcement.setStatus((String) data.get("status"));
-        }
-        
-        announcement = announcementRepository.save(announcement);
-        
-        Map<String, Object> announcementData = new HashMap<>();
-        announcementData.put("id", announcement.getId());
-        announcementData.put("title", announcement.getTitle());
-        announcementData.put("content", announcement.getContent());
-        announcementData.put("status", announcement.getStatus());
-        announcementData.put("publishTime", announcement.getPublishTime() != null ? announcement.getPublishTime().toString() : null);
-        announcementData.put("createdAt", announcement.getCreatedAt());
-        announcementData.put("updatedAt", announcement.getUpdatedAt());
-        
-        result.put("success", true);
-        result.put("message", "更新成功");
-        result.put("data", announcementData);
-        return result;
     }
     
     @Transactional
     public Map<String, Object> deleteAnnouncement(Long id) {
         Map<String, Object> result = new HashMap<>();
-        if (!announcementRepository.existsById(id)) {
+        java.util.Optional<PopularScienceAnnouncement> announcementOpt = announcementRepository.findByIdAndDeletedFalse(id);
+        if (announcementOpt.isEmpty()) {
             result.put("success", false);
             result.put("message", "公告不存在");
             return result;
         }
-        announcementRepository.deleteById(id);
+        
+        PopularScienceAnnouncement announcement = announcementOpt.get();
+        announcement.setDeleted(true);
+        announcement.setDeletedAt(LocalDateTime.now());
+        announcementRepository.save(announcement);
+        
         result.put("success", true);
         result.put("message", "删除成功");
         return result;

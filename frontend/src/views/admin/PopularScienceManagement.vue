@@ -20,7 +20,7 @@
               ref="bannerUploadRef"
               :auto-upload="false"
               :on-change="handleBannerChange"
-              :on-remove="handleBannerRemove"
+              :before-remove="handleBannerBeforeRemove"
               :on-exceed="handleBannerExceed"
               :file-list="bannerFileList"
               list-type="picture-card"
@@ -168,7 +168,7 @@
                   <el-button type="primary" size="small" @click="handleArticleEdit(row, $index)">
                     编辑
                   </el-button>
-                  <el-button type="danger" size="small" @click="handleArticleDelete($index)">
+                  <el-button type="danger" size="small" @click="handleArticleDelete(row, $index)">
                     删除
                   </el-button>
                 </template>
@@ -182,6 +182,8 @@
               :total="articleTotal"
               layout="total, sizes, prev, pager, next, jumper"
               style="margin-top: 20px; justify-content: flex-end;"
+              @current-change="handleArticlePageChange"
+              @size-change="handleArticlePageSizeChange"
             />
           </div>
         </el-tab-pane>
@@ -201,8 +203,7 @@
             
             <el-table :data="announcementList" border style="width: 100%">
               <el-table-column type="index" label="序号" width="60" />
-              <el-table-column prop="title" label="标题" />
-              <el-table-column prop="content" label="内容" show-overflow-tooltip />
+              <el-table-column prop="title" label="标题" min-width="200" />
               <el-table-column prop="publishTime" label="发布时间" width="180" />
               <el-table-column label="状态" width="100">
                 <template #default="{ row }">
@@ -223,7 +224,7 @@
                   <el-button
                     type="danger"
                     size="small"
-                    @click="handleAnnouncementDelete($index)"
+                    @click="handleAnnouncementDelete(row, $index)"
                   >
                     删除
                   </el-button>
@@ -238,6 +239,8 @@
               :total="announcementTotal"
               layout="total, sizes, prev, pager, next, jumper"
               style="margin-top: 20px; justify-content: flex-end;"
+              @current-change="handleAnnouncementPageChange"
+              @size-change="handleAnnouncementPageSizeChange"
             />
           </div>
         </el-tab-pane>
@@ -302,7 +305,7 @@
             :auto-upload="false"
             :on-change="handleCarouselImageChange"
             :on-remove="handleCarouselImageRemove"
-            :file-list="carouselImageList"
+            :file-list="carouselUploadFileList"
             list-type="picture-card"
             accept="image/*"
             multiple
@@ -356,6 +359,51 @@
       <template #footer>
         <el-button @click="carouselDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleCarouselSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 轮播图裁剪对话框 -->
+    <el-dialog
+      v-model="carouselCropDialogVisible"
+      title="裁剪图片"
+      width="800px"
+      :close-on-click-modal="false"
+      :z-index="3000"
+      append-to-body
+    >
+      <div class="crop-container">
+        <vue-picture-cropper
+          v-if="carouselCropImageSrc"
+          ref="carouselPictureCropperRef"
+          :boxStyle="{
+            width: '100%',
+            height: '400px',
+            backgroundColor: '#f8f8f8',
+            margin: 'auto'
+          }"
+          :img="carouselCropImageSrc"
+          :options="{
+            viewMode: 1,
+            dragMode: 'move',
+            aspectRatio: 16 / 9,
+            autoCropArea: 0.8,
+            restore: false,
+            guides: true,
+            center: true,
+            highlight: false,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            toggleDragModeOnDblclick: false
+          }"
+          @ready="onCarouselCropReady"
+          @crop="onCarouselCrop"
+        />
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cancelCarouselCrop">取消</el-button>
+          <el-button type="primary" @click="confirmCarouselCrop">确定</el-button>
+        </span>
       </template>
     </el-dialog>
     
@@ -554,7 +602,7 @@ const handleBannerExceed = () => {
   ElMessage.warning('Banner图只能上传一张，请先删除现有图片')
 }
 
-const handleBannerRemove = async () => {
+const handleBannerBeforeRemove = async (file) => {
   try {
     await ElMessageBox.confirm('确定要删除这张Banner图吗？', '提示', {
       type: 'warning'
@@ -563,101 +611,263 @@ const handleBannerRemove = async () => {
     // 执行后端删除操作
     const response = await popularScienceApi.deleteBanner()
     if (response.success) {
-      // 删除成功后，清空文件列表
-      bannerFileList.value = []
-      if (bannerUploadRef.value) {
-        bannerUploadRef.value.clearFiles()
-      }
+      // 删除成功，返回 true 允许删除
       ElMessage.success('删除成功')
+      return true
     } else {
       ElMessage.error(response.message || '删除失败')
-      // 删除失败，重新加载
+      // 删除失败，返回 false 阻止删除，并重新加载
       await loadBanner()
+      return false
     }
   } catch (error) {
-    if (error !== 'cancel') {
+    if (error === 'cancel') {
+      // 用户取消，返回 false 阻止删除
+      return false
+    } else {
       console.error('删除Banner图失败:', error)
       ElMessage.error('删除Banner图失败')
-      // 删除失败，重新加载
+      // 删除失败，返回 false 阻止删除，并重新加载
       await loadBanner()
+      return false
     }
   }
 }
 
 // ========== 轮播图管理 ==========
-const carouselList = ref([
-  {
-    id: 1,
-    image: 'https://via.placeholder.com/800x400?text=轮播图1',
-    title: '科普教育轮播图1',
-    link: '/popular-science',
-    sort: 1
+const carouselList = ref([])
+
+// 构建完整的图片URL
+const getCarouselImageUrl = (imageUrl) => {
+  if (!imageUrl) return ''
+  // 如果是完整URL或base64，直接返回
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
+    return imageUrl
   }
-])
+  // 如果是相对路径，需要加上后端基础URL
+  if (imageUrl.startsWith('/')) {
+    return `http://localhost:8080${imageUrl}`
+  }
+  return `http://localhost:8080/${imageUrl}`
+}
+
+// 加载轮播图列表
+const loadCarousel = async () => {
+  try {
+    const response = await popularScienceApi.getCarouselList()
+    if (response.success && response.data) {
+      carouselList.value = response.data.map(item => ({
+        ...item,
+        image: getCarouselImageUrl(item.image)
+      }))
+    } else {
+      carouselList.value = []
+    }
+  } catch (error) {
+    console.error('加载轮播图失败:', error)
+    ElMessage.error('加载轮播图失败')
+    carouselList.value = []
+  }
+}
 
 const carouselDialogVisible = ref(false)
 const carouselDialogTitle = ref('添加轮播图')
 const carouselUploadRef = ref(null)
-const carouselImageList = ref([])
+const carouselImageList = ref([]) // 已裁剪完成的图片列表（用于显示和配置）
+const carouselUploadFileList = ref([]) // el-upload 组件的文件列表（用于显示待处理的上传文件）
+
+// 裁剪相关
+const carouselCropDialogVisible = ref(false)
+const carouselCropImageSrc = ref('')
+const carouselPendingFileQueue = ref([]) // 待裁剪文件队列
+const carouselCurrentPendingFile = ref(null)
+const carouselPictureCropperRef = ref(null)
+const carouselCropperReady = ref(false)
+
+const carouselEditId = ref(null) // 编辑时的轮播图ID
 
 const handleCarouselAdd = () => {
   carouselDialogTitle.value = '添加轮播图'
   carouselImageList.value = []
+  carouselUploadFileList.value = []
+  carouselPendingFileQueue.value = []
+  carouselEditId.value = null
+  if (carouselUploadRef.value) {
+    carouselUploadRef.value.clearFiles()
+  }
   carouselDialogVisible.value = true
 }
 
 const handleCarouselEdit = (row, index) => {
   carouselDialogTitle.value = '编辑轮播图'
+  carouselEditId.value = row.id
+  
+  // 编辑时只显示当前这一条轮播图
+  const originalImageUrl = row.image
+  let backendImageUrl = originalImageUrl
+  if (originalImageUrl && originalImageUrl.startsWith('http://localhost:8080/')) {
+    backendImageUrl = originalImageUrl.replace('http://localhost:8080', '')
+  }
+  
   carouselImageList.value = [{
     uid: row.id,
-    url: row.image,
-    title: row.title,
-    link: row.link,
-    sort: row.sort
+    url: originalImageUrl, // 显示用的完整URL
+    backendUrl: backendImageUrl, // 保存用的后端路径
+    title: row.title || '',
+    link: row.link || '',
+    sort: row.sort || 0
   }]
+  
+  carouselUploadFileList.value = []
+  carouselPendingFileQueue.value = []
+  if (carouselUploadRef.value) {
+    carouselUploadRef.value.clearFiles()
+  }
   carouselDialogVisible.value = true
 }
 
 const handleCarouselImageChange = (file, fileList) => {
-  // 读取新上传的图片
+  // 更新上传组件的文件列表（仅用于显示）
+  carouselUploadFileList.value = fileList
+  
+  // 将文件添加到待裁剪队列
   const reader = new FileReader()
   reader.onload = (e) => {
-    // 找到当前文件并更新
-    const currentFile = fileList.find(f => f.uid === file.uid)
-    if (currentFile) {
-      currentFile.url = e.target.result
-      // 初始化配置项
-      if (!currentFile.title) currentFile.title = ''
-      if (!currentFile.link) currentFile.link = ''
-      if (currentFile.sort === undefined) {
-        currentFile.sort = carouselImageList.value.length
+    // 检查是否是新文件（还没有裁剪过的）
+    const existingFile = carouselImageList.value.find(f => f.uid === file.uid)
+    if (!existingFile) {
+      // 新文件，添加到裁剪队列
+      carouselPendingFileQueue.value.push({
+        file: file,
+        base64: e.target.result,
+        uid: file.uid
+      })
+      // 立即处理队列
+      if (carouselPendingFileQueue.value.length === 1) {
+        processCarouselCropQueue()
       }
     }
-    // 更新 carouselImageList
-    carouselImageList.value = fileList.map(f => ({
-      uid: f.uid,
-      url: f.url || f.response?.url || '',
-      name: f.name,
-      raw: f.raw,
-      title: f.title || '',
-      link: f.link || '',
-      sort: f.sort !== undefined ? f.sort : carouselImageList.value.length
-    }))
+  }
+  reader.onerror = () => {
+    ElMessage.error('读取文件失败')
   }
   reader.readAsDataURL(file.raw)
 }
 
+// 处理裁剪队列
+const processCarouselCropQueue = () => {
+  // 如果正在处理其他文件，等待
+  if (carouselCropDialogVisible.value || !carouselPendingFileQueue.value.length) {
+    return
+  }
+  
+  // 取出队列中的第一个文件
+  const fileItem = carouselPendingFileQueue.value.shift()
+  if (!fileItem || !fileItem.base64) {
+    // 如果文件无效，继续处理下一个
+    processCarouselCropQueue()
+    return
+  }
+  
+  carouselCurrentPendingFile.value = fileItem
+  carouselCropImageSrc.value = fileItem.base64
+  carouselCropperReady.value = false
+  
+  // 使用 setTimeout 确保图片源已经设置
+  setTimeout(() => {
+    carouselCropDialogVisible.value = true
+  }, 200)
+}
+
+// 裁剪器准备就绪
+const onCarouselCropReady = () => {
+  carouselCropperReady.value = true
+}
+
+// 裁剪事件
+const onCarouselCrop = () => {
+  // 实时裁剪预览（可选）
+}
+
+// 取消裁剪
+const cancelCarouselCrop = () => {
+  carouselCropDialogVisible.value = false
+  carouselCropImageSrc.value = ''
+  carouselCurrentPendingFile.value = null
+  carouselCropperReady.value = false
+  
+  // 从上传文件列表中移除未裁剪的文件
+  if (carouselCurrentPendingFile.value) {
+    carouselUploadFileList.value = carouselUploadFileList.value.filter(f => f.uid !== carouselCurrentPendingFile.value.uid)
+  }
+  carouselCurrentPendingFile.value = null
+  
+  // 继续处理队列中的下一个文件
+  processCarouselCropQueue()
+}
+
+// 确认裁剪
+const confirmCarouselCrop = () => {
+  if (!carouselCropperReady.value || !cropper || !carouselCurrentPendingFile.value) {
+    ElMessage.error('裁剪器未准备好，请稍候重试')
+    return
+  }
+  
+  try {
+    // 获取裁剪后的base64图片
+    const croppedCanvas = cropper.getCroppedCanvas({
+      width: 1920,  // 推荐宽度
+      height: 1080, // 推荐高度（16:9比例）
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high'
+    })
+    
+    if (!croppedCanvas) {
+      ElMessage.error('裁剪失败，请重试')
+      return
+    }
+    
+    const croppedImageUrl = croppedCanvas.toDataURL('image/jpeg', 0.9)
+    
+    // 添加到图片列表（已裁剪完成的）
+    const newImageItem = {
+      uid: carouselCurrentPendingFile.value.uid,
+      url: croppedImageUrl,
+      name: carouselCurrentPendingFile.value.file.name,
+      raw: carouselCurrentPendingFile.value.file.raw,
+      title: '',
+      link: '',
+      sort: carouselImageList.value.length
+    }
+    
+    carouselImageList.value.push(newImageItem)
+    
+    // 从上传文件列表中移除（因为已经裁剪完成并添加到列表）
+    carouselUploadFileList.value = carouselUploadFileList.value.filter(f => f.uid !== carouselCurrentPendingFile.value.uid)
+    
+    // 关闭裁剪对话框
+    carouselCropDialogVisible.value = false
+    carouselCropImageSrc.value = ''
+    carouselCurrentPendingFile.value = null
+    carouselCropperReady.value = false
+    
+    // 继续处理队列中的下一个文件
+    processCarouselCropQueue()
+  } catch (error) {
+    console.error('裁剪图片失败:', error)
+    ElMessage.error('裁剪图片失败: ' + (error.message || '未知错误'))
+  }
+}
+
 const handleCarouselImageRemove = (file, fileList) => {
-  // 更新 carouselImageList
-  carouselImageList.value = fileList.map(f => ({
-    uid: f.uid,
-    url: f.url || f.response?.url || '',
-    name: f.name,
-    raw: f.raw,
-    title: f.title || '',
-    link: f.link || '',
-    sort: f.sort !== undefined ? f.sort : 0
-  }))
+  // 更新上传组件文件列表
+  carouselUploadFileList.value = fileList
+  
+  // 从已裁剪列表中移除
+  carouselImageList.value = carouselImageList.value.filter(f => f.uid !== file.uid)
+  
+  // 从队列中移除
+  carouselPendingFileQueue.value = carouselPendingFileQueue.value.filter(f => f.uid !== file.uid)
 }
 
 const updateCarouselItemConfig = (index, field, value) => {
@@ -666,48 +876,140 @@ const updateCarouselItemConfig = (index, field, value) => {
   }
 }
 
-const handleCarouselSubmit = () => {
+const handleCarouselSubmit = async () => {
   if (carouselImageList.value.length === 0) {
     ElMessage.warning('请至少上传一张图片')
     return
   }
   
-  // 更新轮播图列表
-  carouselList.value = carouselImageList.value.map((item, index) => ({
-    id: item.uid || Date.now() + index,
-    image: item.url,
-    title: item.title || '',
-    link: item.link || '',
-    sort: item.sort !== undefined ? item.sort : index
-  })).sort((a, b) => a.sort - b.sort)
-  
-  ElMessage.success('保存成功')
-  carouselDialogVisible.value = false
+  try {
+    let carouselListData = []
+    
+    if (carouselEditId.value) {
+      // 编辑模式：合并所有轮播图，更新当前编辑的这一条
+      carouselListData = carouselList.value.map(item => {
+        if (item.id === carouselEditId.value) {
+          // 更新当前编辑的这条
+          const editedItem = carouselImageList.value[0]
+          let imageUrl = editedItem.url
+          // 如果是编辑时保留的服务器图片（有backendUrl），使用后端路径
+          if (editedItem.backendUrl && !editedItem.url.startsWith('data:image/')) {
+            imageUrl = editedItem.backendUrl
+          } else if (editedItem.url.startsWith('http://localhost:8080/')) {
+            // 如果是完整URL但不是Base64，提取后端路径
+            imageUrl = editedItem.url.replace('http://localhost:8080', '')
+          }
+          // 如果是Base64，直接使用
+          
+          return {
+            image: imageUrl,
+            title: editedItem.title || '',
+            link: editedItem.link || '',
+            sort: editedItem.sort !== undefined ? editedItem.sort : item.sort || 0
+          }
+        } else {
+          // 保留其他轮播图
+          let imageUrl = item.image
+          if (imageUrl && imageUrl.startsWith('http://localhost:8080/')) {
+            imageUrl = imageUrl.replace('http://localhost:8080', '')
+          }
+          return {
+            image: imageUrl,
+            title: item.title || '',
+            link: item.link || '',
+            sort: item.sort || 0
+          }
+        }
+      })
+    } else {
+      // 添加模式：准备新添加的轮播图数据，并合并现有的
+      const newCarouselData = carouselImageList.value.map((item, index) => {
+        let imageUrl = item.url
+        if (item.backendUrl && !item.url.startsWith('data:image/')) {
+          imageUrl = item.backendUrl
+        } else if (item.url.startsWith('http://localhost:8080/')) {
+          imageUrl = item.url.replace('http://localhost:8080', '')
+        }
+        
+        return {
+          image: imageUrl,
+          title: item.title || '',
+          link: item.link || '',
+          sort: item.sort !== undefined ? item.sort : (carouselList.value.length + index)
+        }
+      })
+      
+      // 合并现有轮播图
+      const existingCarouselData = carouselList.value.map(item => {
+        let imageUrl = item.image
+        if (imageUrl && imageUrl.startsWith('http://localhost:8080/')) {
+          imageUrl = imageUrl.replace('http://localhost:8080', '')
+        }
+        return {
+          image: imageUrl,
+          title: item.title || '',
+          link: item.link || '',
+          sort: item.sort || 0
+        }
+      })
+      
+      carouselListData = [...existingCarouselData, ...newCarouselData]
+    }
+    
+    // 调用后端API保存
+    const response = await popularScienceApi.saveCarouselList(carouselListData)
+    
+    if (response.success) {
+      ElMessage.success(carouselEditId.value ? '编辑成功' : '添加成功')
+      carouselDialogVisible.value = false
+      carouselEditId.value = null
+      // 重新加载轮播图列表
+      await loadCarousel()
+    } else {
+      ElMessage.error(response.message || '保存失败')
+    }
+  } catch (error) {
+    console.error('保存轮播图失败:', error)
+    ElMessage.error('保存轮播图失败: ' + (error.response?.data?.message || error.message || '未知错误'))
+  }
 }
 
-const handleCarouselDelete = (index) => {
-  ElMessageBox.confirm('确定要删除这个轮播图吗？', '提示', {
-    type: 'warning'
-  }).then(() => {
-    carouselList.value.splice(index, 1)
-    ElMessage.success('删除成功')
-  }).catch(() => {})
+const handleCarouselDelete = async (index) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这个轮播图吗？', '提示', {
+      type: 'warning'
+    })
+    
+    const carousel = carouselList.value[index]
+    if (!carousel || !carousel.id) {
+      ElMessage.error('轮播图数据错误')
+      return
+    }
+    
+    // 调用后端API删除
+    const response = await popularScienceApi.deleteCarousel(carousel.id)
+    
+    if (response.success) {
+      ElMessage.success('删除成功')
+      // 重新加载轮播图列表
+      await loadCarousel()
+    } else {
+      ElMessage.error(response.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除轮播图失败:', error)
+      ElMessage.error('删除轮播图失败')
+    }
+  }
 }
 
 // ========== 参会公告管理 ==========
-const announcementList = ref([
-  {
-    id: 1,
-    title: '科普教育公告',
-    content: '欢迎参加科普教育活动',
-    publishTime: '2025-01-15 09:00:00',
-    status: 'published'
-  }
-])
+const announcementList = ref([])
 
 const announcementPage = ref(1)
 const announcementPageSize = ref(10)
-const announcementTotal = ref(1)
+const announcementTotal = ref(0)
 
 const announcementDialogVisible = ref(false)
 const announcementDialogTitle = ref('添加公告')
@@ -717,7 +1019,40 @@ const announcementForm = reactive({
   content: '',
   status: 'draft'
 })
-const announcementEditIndex = ref(-1)
+
+// 加载公告列表
+const loadAnnouncements = async () => {
+  try {
+    const response = await popularScienceApi.getAnnouncementList({
+      page: announcementPage.value,
+      pageSize: announcementPageSize.value
+    })
+    if (response.success && response.data) {
+      announcementList.value = response.data
+      announcementTotal.value = response.total || 0
+    } else {
+      announcementList.value = []
+      announcementTotal.value = 0
+    }
+  } catch (error) {
+    console.error('加载公告列表失败:', error)
+    ElMessage.error('加载公告列表失败')
+    announcementList.value = []
+    announcementTotal.value = 0
+  }
+}
+
+// 分页变化
+const handleAnnouncementPageChange = (page) => {
+  announcementPage.value = page
+  loadAnnouncements()
+}
+
+const handleAnnouncementPageSizeChange = (pageSize) => {
+  announcementPageSize.value = pageSize
+  announcementPage.value = 1
+  loadAnnouncements()
+}
 
 const handleAnnouncementAdd = () => {
   announcementDialogTitle.value = '添加公告'
@@ -725,21 +1060,30 @@ const handleAnnouncementAdd = () => {
   announcementForm.title = ''
   announcementForm.content = ''
   announcementForm.status = 'draft'
-  announcementEditIndex.value = -1
   announcementDialogVisible.value = true
 }
 
-const handleAnnouncementEdit = (row, index) => {
+const handleAnnouncementEdit = async (row, index) => {
   announcementDialogTitle.value = '编辑公告'
-  announcementForm.id = row.id
-  announcementForm.title = row.title
-  announcementForm.content = row.content
-  announcementForm.status = row.status
-  announcementEditIndex.value = index
-  announcementDialogVisible.value = true
+  try {
+    // 获取完整的公告详情
+    const response = await popularScienceApi.getAnnouncementById(row.id)
+    if (response.success && response.data) {
+      announcementForm.id = response.data.id
+      announcementForm.title = response.data.title || ''
+      announcementForm.content = response.data.content || ''
+      announcementForm.status = response.data.status || 'draft'
+      announcementDialogVisible.value = true
+    } else {
+      ElMessage.error('获取公告详情失败')
+    }
+  } catch (error) {
+    console.error('获取公告详情失败:', error)
+    ElMessage.error('获取公告详情失败')
+  }
 }
 
-const handleAnnouncementSubmit = () => {
+const handleAnnouncementSubmit = async () => {
   if (!announcementForm.title) {
     ElMessage.warning('请输入标题')
     return
@@ -749,61 +1093,71 @@ const handleAnnouncementSubmit = () => {
     return
   }
   
-  const now = new Date().toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }).replace(/\//g, '-')
-  
-  if (announcementEditIndex.value >= 0) {
-    // 编辑
-    announcementList.value[announcementEditIndex.value] = {
-      ...announcementForm,
-      publishTime: announcementList.value[announcementEditIndex.value].publishTime
+  try {
+    const announcementData = {
+      title: announcementForm.title.trim(),
+      content: announcementForm.content,
+      status: announcementForm.status || 'draft'
     }
-    ElMessage.success('编辑成功')
-  } else {
-    // 添加
-    announcementList.value.push({
-      ...announcementForm,
-      id: Date.now(),
-      publishTime: now
-    })
-    announcementTotal.value = announcementList.value.length
-    ElMessage.success('添加成功')
+    
+    let response
+    if (announcementForm.id) {
+      // 编辑
+      response = await popularScienceApi.updateAnnouncement(announcementForm.id, announcementData)
+    } else {
+      // 添加
+      response = await popularScienceApi.addAnnouncement(announcementData)
+    }
+    
+    if (response.success) {
+      ElMessage.success(announcementForm.id ? '编辑成功' : '添加成功')
+      announcementDialogVisible.value = false
+      // 重新加载公告列表
+      await loadAnnouncements()
+    } else {
+      ElMessage.error(response.message || '保存失败')
+    }
+  } catch (error) {
+    console.error('保存公告失败:', error)
+    ElMessage.error('保存公告失败: ' + (error.response?.data?.message || error.message || '未知错误'))
   }
-  announcementDialogVisible.value = false
 }
 
-const handleAnnouncementDelete = (index) => {
-  ElMessageBox.confirm('确定要删除这条公告吗？', '提示', {
-    type: 'warning'
-  }).then(() => {
-    announcementList.value.splice(index, 1)
-    announcementTotal.value = announcementList.value.length
-    ElMessage.success('删除成功')
-  }).catch(() => {})
+const handleAnnouncementDelete = async (row, index) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这条公告吗？', '提示', {
+      type: 'warning'
+    })
+    
+    if (!row || !row.id) {
+      ElMessage.error('公告数据错误')
+      return
+    }
+    
+    // 调用后端API删除
+    const response = await popularScienceApi.deleteAnnouncement(row.id)
+    
+    if (response.success) {
+      ElMessage.success('删除成功')
+      // 重新加载公告列表
+      await loadAnnouncements()
+    } else {
+      ElMessage.error(response.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除公告失败:', error)
+      ElMessage.error('删除公告失败')
+    }
+  }
 }
 
 // ========== 新闻动态管理 ==========
-const articleList = ref([
-  {
-    id: 1,
-    title: '建筑节能科普知识',
-    author: '管理员',
-    publishTime: '2025-01-15 10:00:00',
-    tags: ['节能', '科普'],
-    content: '<p>建筑节能科普知识内容...</p>',
-    status: 'published'
-  }
-])
+const articleList = ref([])
 
 const articlePage = ref(1)
 const articlePageSize = ref(10)
-const articleTotal = ref(1)
+const articleTotal = ref(0)
 
 const availableTags = ref(['科普', '节能', '环保', '建筑', '技术'])
 
@@ -817,7 +1171,40 @@ const articleForm = reactive({
   content: '',
   status: 'draft'
 })
-const articleEditIndex = ref(-1)
+
+// 加载新闻列表
+const loadArticles = async () => {
+  try {
+    const response = await popularScienceApi.getArticleList({
+      page: articlePage.value,
+      pageSize: articlePageSize.value
+    })
+    if (response.success && response.data) {
+      articleList.value = response.data
+      articleTotal.value = response.total || 0
+    } else {
+      articleList.value = []
+      articleTotal.value = 0
+    }
+  } catch (error) {
+    console.error('加载新闻列表失败:', error)
+    ElMessage.error('加载新闻列表失败')
+    articleList.value = []
+    articleTotal.value = 0
+  }
+}
+
+// 分页变化
+const handleArticlePageChange = (page) => {
+  articlePage.value = page
+  loadArticles()
+}
+
+const handleArticlePageSizeChange = (pageSize) => {
+  articlePageSize.value = pageSize
+  articlePage.value = 1
+  loadArticles()
+}
 
 const handleArticleAdd = () => {
   articleDialogTitle.value = '添加新闻'
@@ -827,23 +1214,32 @@ const handleArticleAdd = () => {
   articleForm.tags = []
   articleForm.content = ''
   articleForm.status = 'draft'
-  articleEditIndex.value = -1
   articleDialogVisible.value = true
 }
 
-const handleArticleEdit = (row, index) => {
+const handleArticleEdit = async (row, index) => {
   articleDialogTitle.value = '编辑新闻'
-  articleForm.id = row.id
-  articleForm.title = row.title
-  articleForm.author = row.author
-  articleForm.tags = [...(row.tags || [])]
-  articleForm.content = row.content || ''
-  articleForm.status = row.status
-  articleEditIndex.value = index
-  articleDialogVisible.value = true
+  try {
+    // 获取完整的新闻详情
+    const response = await popularScienceApi.getArticleById(row.id)
+    if (response.success && response.data) {
+      articleForm.id = response.data.id
+      articleForm.title = response.data.title || ''
+      articleForm.author = response.data.author || ''
+      articleForm.tags = Array.isArray(response.data.tags) ? [...response.data.tags] : []
+      articleForm.content = response.data.content || ''
+      articleForm.status = response.data.status || 'draft'
+      articleDialogVisible.value = true
+    } else {
+      ElMessage.error('获取新闻详情失败')
+    }
+  } catch (error) {
+    console.error('获取新闻详情失败:', error)
+    ElMessage.error('获取新闻详情失败')
+  }
 }
 
-const handleArticleSubmit = () => {
+const handleArticleSubmit = async () => {
   if (!articleForm.title || !articleForm.title.trim()) {
     ElMessage.warning('请输入标题')
     return
@@ -853,46 +1249,71 @@ const handleArticleSubmit = () => {
     return
   }
   
-  const now = new Date().toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }).replace(/\//g, '-')
-  
-  if (articleEditIndex.value >= 0) {
-    articleList.value[articleEditIndex.value] = {
-      ...articleForm,
-      publishTime: articleList.value[articleEditIndex.value].publishTime
+  try {
+    const articleData = {
+      title: articleForm.title.trim(),
+      author: articleForm.author || '',
+      content: articleForm.content,
+      tags: articleForm.tags || [],
+      status: articleForm.status || 'draft'
     }
-    ElMessage.success('编辑成功')
-  } else {
-    articleList.value.push({
-      ...articleForm,
-      id: Date.now(),
-      publishTime: now
-    })
-    articleTotal.value = articleList.value.length
-    ElMessage.success('添加成功')
+    
+    let response
+    if (articleForm.id) {
+      // 编辑
+      response = await popularScienceApi.updateArticle(articleForm.id, articleData)
+    } else {
+      // 添加
+      response = await popularScienceApi.addArticle(articleData)
+    }
+    
+    if (response.success) {
+      ElMessage.success(articleForm.id ? '编辑成功' : '添加成功')
+      articleDialogVisible.value = false
+      // 重新加载新闻列表
+      await loadArticles()
+    } else {
+      ElMessage.error(response.message || '保存失败')
+    }
+  } catch (error) {
+    console.error('保存新闻失败:', error)
+    ElMessage.error('保存新闻失败: ' + (error.response?.data?.message || error.message || '未知错误'))
   }
-  articleDialogVisible.value = false
 }
 
-const handleArticleDelete = (index) => {
-  ElMessageBox.confirm('确定要删除这篇文章吗？', '提示', { type: 'warning' })
-    .then(() => {
-      articleList.value.splice(index, 1)
-      articleTotal.value = articleList.value.length
+const handleArticleDelete = async (row, index) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这篇文章吗？', '提示', { type: 'warning' })
+    
+    if (!row || !row.id) {
+      ElMessage.error('新闻数据错误')
+      return
+    }
+    
+    // 调用后端API删除
+    const response = await popularScienceApi.deleteArticle(row.id)
+    
+    if (response.success) {
       ElMessage.success('删除成功')
-    })
-    .catch(() => {})
+      // 重新加载新闻列表
+      await loadArticles()
+    } else {
+      ElMessage.error(response.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除新闻失败:', error)
+      ElMessage.error('删除新闻失败')
+    }
+  }
 }
 
-// 组件挂载时加载Banner图
+// 组件挂载时加载数据
 onMounted(() => {
   loadBanner()
+  loadCarousel()
+  loadArticles()
+  loadAnnouncements()
 })
 </script>
 

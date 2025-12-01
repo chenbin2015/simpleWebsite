@@ -21,7 +21,7 @@
               ref="bannerImageUploadRef"
               :auto-upload="false"
               :on-change="handleBannerImageChange"
-              :on-remove="handleBannerImageRemove"
+              :before-remove="handleBannerImageBeforeRemove"
               :file-list="bannerImageFileList"
               list-type="picture-card"
               accept="image/*"
@@ -282,10 +282,34 @@ const handleBannerImageChange = (file, fileList) => {
   bannerImageFileList.value = fileList
 }
 
-const handleBannerImageRemove = () => {
-  bannerForm.imageUrl = ''
-  bannerImageFile.value = null
-  bannerImageFileList.value = []
+const handleBannerImageBeforeRemove = async (file) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这张图片吗？', '提示', {
+      type: 'warning'
+    })
+    
+    // 判断是否是已保存到服务器的图片（不是Base64）
+    const isServerImage = bannerForm.imageUrl && 
+                          !bannerForm.imageUrl.startsWith('data:')
+    
+    if (isServerImage) {
+      // 已保存到服务器的图片，通知父组件调用后端删除API并重新加载数据
+      emit('delete', { type: 'image' })
+      // 删除服务器图片后，返回 true 允许从上传组件中移除
+      return true
+    }
+    
+    // 本地图片或Base64图片，只清空本地状态
+    bannerForm.imageUrl = ''
+    bannerImageFile.value = null
+    // 更新表单数据
+    emit('update:modelValue', { ...bannerForm })
+    // 允许从上传组件中移除
+    return true
+  } catch (error) {
+    // 用户取消删除，返回 false 阻止删除
+    return false
+  }
 }
 
 const handleBannerImageDelete = async () => {
