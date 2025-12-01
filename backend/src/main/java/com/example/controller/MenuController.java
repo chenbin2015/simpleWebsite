@@ -60,7 +60,8 @@ public class MenuController {
         String name = (String) request.get("name");
         Integer sortOrder = request.get("sortOrder") != null ? 
             ((Number) request.get("sortOrder")).intValue() : null;
-        return menuService.createSubMenu(parentId, name, sortOrder);
+        String pageType = (String) request.get("pageType");
+        return menuService.createSubMenu(parentId, name, sortOrder, pageType);
     }
     
     /**
@@ -75,7 +76,8 @@ public class MenuController {
             ((Number) request.get("sortOrder")).intValue() : null;
         Boolean isActive = request.get("isActive") != null ? 
             (Boolean) request.get("isActive") : null;
-        return menuService.updateMenu(id, name, sortOrder, isActive);
+        String pageType = (String) request.get("pageType");
+        return menuService.updateMenu(id, name, sortOrder, isActive, pageType);
     }
     
     /**

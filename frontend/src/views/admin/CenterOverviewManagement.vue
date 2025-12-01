@@ -14,6 +14,7 @@
             <BannerManagement
               v-model="bannerForm"
               @save="handleBannerSave"
+              @delete="handleBannerDelete"
             />
           </div>
         </el-tab-pane>
@@ -22,56 +23,6 @@
         <el-tab-pane label="详情管理" name="detail">
           <div class="tab-content">
             <el-form :model="detailForm" label-width="120px" label-position="left">
-              <!-- 视频Banner -->
-              <el-form-item label="视频Banner">
-                <div class="video-upload-section">
-                  <el-upload
-                    ref="videoUploadRef"
-                    :auto-upload="false"
-                    :on-change="handleVideoChange"
-                    :file-list="videoFileList"
-                    :limit="1"
-                    accept="video/*"
-                    list-type="text"
-                  >
-                    <el-button type="primary">
-                      <el-icon><Upload /></el-icon>
-                      上传视频
-                    </el-button>
-                    <template #tip>
-                      <div class="el-upload__tip">支持mp4、webm等视频格式，建议尺寸1920x1080</div>
-                    </template>
-                  </el-upload>
-                  <div v-if="detailForm.videoUrl" class="video-preview">
-                    <video :src="detailForm.videoUrl" controls style="max-width: 100%; max-height: 300px; margin-top: 10px;" />
-                    <el-button type="danger" size="small" style="margin-top: 10px;" @click="handleVideoDelete">
-                      删除视频
-                    </el-button>
-                  </div>
-                  <div v-else-if="detailForm.videoUrlExternal" class="video-preview">
-                    <div class="external-video-info">
-                      <p><strong>外部视频URL：</strong>{{ detailForm.videoUrlExternal }}</p>
-                      <video :src="detailForm.videoUrlExternal" controls style="max-width: 100%; max-height: 300px; margin-top: 10px;" />
-                      <el-button type="danger" size="small" style="margin-top: 10px;" @click="handleVideoExternalDelete">
-                        删除视频
-                      </el-button>
-                    </div>
-                  </div>
-                  <div v-else class="video-placeholder">
-                    <el-alert type="info" :closable="false" style="margin-top: 10px;">
-                      <template #default>
-                        <div>暂无视频，请上传视频文件或输入外部视频URL</div>
-                        <el-input v-model="externalVideoUrl" placeholder="或输入外部视频URL" style="margin-top: 10px;">
-                          <template #append>
-                            <el-button @click="handleSetExternalVideo">设置</el-button>
-                          </template>
-                        </el-input>
-                      </template>
-                    </el-alert>
-                  </div>
-                </div>
-              </el-form-item>
-
               <!-- 主标题 -->
               <el-form-item label="主标题">
                 <el-input v-model="detailForm.mainTitle" placeholder="请输入主标题" maxlength="100" show-word-limit />
@@ -110,70 +61,49 @@
         <!-- 组织架构管理 -->
         <el-tab-pane label="组织架构" name="organization">
           <div class="tab-content">
-            <el-form :model="organizationForm" label-width="120px" label-position="left">
-              <!-- 主任 -->
-              <el-form-item label="主任">
-                <div class="person-list">
-                  <div v-for="(person, index) in organizationForm.director" :key="index" class="person-item">
-                    <el-input
-                      v-model="organizationForm.director[index]"
-                      placeholder="请输入主任姓名"
-                      style="width: 300px; margin-right: 10px;"
-                    />
-                    <el-button type="danger" :icon="Delete" circle @click="removePerson('director', index)" />
-                  </div>
-                  <el-button type="primary" :icon="Plus" @click="addPerson('director')">
-                    添加主任
-                  </el-button>
+            <div class="organization-management">
+              <!-- 角色类型列表 -->
+              <div v-for="(roleGroup, index) in organizationRoleGroups" :key="index" class="role-group">
+                <div class="role-header">
+                  <el-input
+                    v-model="roleGroup.roleName"
+                    placeholder="请输入角色类型名称"
+                    style="width: 200px; margin-right: 10px;"
+                    @blur="handleRoleNameChange(index, roleGroup)"
+                  />
+                  <el-button 
+                    type="danger" 
+                    :icon="Delete" 
+                    circle 
+                    @click="removeRoleGroup(index)"
+                    :disabled="organizationRoleGroups.length <= 1"
+                  />
                 </div>
-              </el-form-item>
-
-              <!-- 副主任 -->
-              <el-form-item label="副主任">
+                
                 <div class="person-list">
-                  <div v-for="(person, index) in organizationForm.deputyDirector" :key="index" class="person-item">
+                  <div v-for="(person, personIndex) in roleGroup.members" :key="person.id || personIndex" class="person-item">
                     <el-input
-                      v-model="organizationForm.deputyDirector[index]"
-                      placeholder="请输入副主任姓名"
+                      v-model="person.name"
+                      :placeholder="`请输入${roleGroup.roleName || '角色'}姓名`"
                       style="width: 300px; margin-right: 10px;"
+                      @blur="handlePersonNameChange(index, personIndex, person)"
                     />
-                    <el-button type="danger" :icon="Delete" circle @click="removePerson('deputyDirector', index)" />
+                    <el-button type="danger" :icon="Delete" circle @click="removePersonFromRole(index, personIndex, person)" />
                   </div>
-                  <el-button type="primary" :icon="Plus" @click="addPerson('deputyDirector')">
-                    添加副主任
-                  </el-button>
-                </div>
-              </el-form-item>
-
-              <!-- 成员 -->
-              <el-form-item label="成员">
-                <div class="person-list">
-                  <div v-for="(person, index) in organizationForm.members" :key="index" class="person-item">
-                    <el-input
-                      v-model="organizationForm.members[index]"
-                      placeholder="请输入成员姓名"
-                      style="width: 300px; margin-right: 10px;"
-                    />
-                    <el-button type="danger" :icon="Delete" circle @click="removePerson('members', index)" />
-                  </div>
-                  <el-button type="primary" :icon="Plus" @click="addPerson('members')">
+                  <el-button type="primary" :icon="Plus" @click="addPersonToRole(index)">
                     添加成员
                   </el-button>
                 </div>
-              </el-form-item>
+              </div>
 
-              <!-- 操作按钮 -->
-              <el-form-item>
-                <el-button type="primary" size="large" @click="handleOrganizationSave">
-                  <el-icon><Check /></el-icon>
-                  保存
+              <!-- 添加角色类型按钮 -->
+              <div class="add-role-group">
+                <el-button type="primary" :icon="Plus" @click="addRoleGroup">
+                  添加角色类型
                 </el-button>
-                <el-button size="large" @click="handleOrganizationReset">
-                  <el-icon><RefreshLeft /></el-icon>
-                  重置
-                </el-button>
-              </el-form-item>
-            </el-form>
+              </div>
+
+            </div>
           </div>
         </el-tab-pane>
 
@@ -194,11 +124,16 @@
               </el-empty>
             </div>
 
-            <el-table v-else :data="laboratoryList" border style="width: 100%">
+            <el-table v-else :data="laboratoryList" border style="width: 100%" v-loading="loading">
               <el-table-column type="index" label="序号" width="60" />
               <el-table-column label="图片" width="150">
                 <template #default="{ row }">
-                  <el-image :src="row.image" style="width: 120px; height: 80px;" fit="cover" :preview-src-list="[row.image]">
+                  <el-image 
+                    :src="getImageUrl(row.imageUrl)" 
+                    style="width: 120px; height: 80px;" 
+                    fit="cover" 
+                    :preview-src-list="[getImageUrl(row.imageUrl)]"
+                  >
                     <template #error>
                       <div class="image-slot">
                         <el-icon><Picture /></el-icon>
@@ -209,13 +144,13 @@
               </el-table-column>
               <el-table-column prop="name" label="实验室名称" min-width="200" />
               <el-table-column prop="link" label="链接地址" min-width="200" show-overflow-tooltip />
-              <el-table-column prop="sort" label="排序" width="100" />
+              <el-table-column prop="sortOrder" label="排序" width="100" />
               <el-table-column label="操作" width="200" fixed="right">
-                <template #default="{ row, $index }">
-                  <el-button type="primary" size="small" @click="handleLabEdit(row, $index)">
+                <template #default="{ row }">
+                  <el-button type="primary" size="small" @click="handleLabEdit(row)">
                     编辑
                   </el-button>
-                  <el-button type="danger" size="small" @click="handleLabDelete($index)">
+                  <el-button type="danger" size="small" @click="handleLabDelete(row.id)">
                     删除
                   </el-button>
                 </template>
@@ -234,8 +169,10 @@
         </el-form-item>
         <el-form-item label="图片">
           <el-upload
+            ref="labImageUploadRef"
             :auto-upload="false"
             :on-change="handleLabImageChange"
+            :on-remove="handleLabImageRemove"
             :file-list="labImageFileList"
             list-type="picture-card"
             :limit="1"
@@ -248,7 +185,7 @@
           <el-input v-model="labForm.link" placeholder="请输入链接地址（可选）" />
         </el-form-item>
         <el-form-item label="排序">
-          <el-input-number v-model="labForm.sort" :min="0" />
+          <el-input-number v-model="labForm.sortOrder" :min="0" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -256,18 +193,66 @@
         <el-button type="primary" @click="handleLabSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 图片裁剪对话框 -->
+    <el-dialog
+      v-model="labCropDialogVisible"
+      title="裁剪图片"
+      width="800px"
+      :close-on-click-modal="false"
+      :z-index="3000"
+      append-to-body
+    >
+      <div class="crop-container" v-if="labCropImageSrc">
+        <vue-picture-cropper
+          ref="labPictureCropperRef"
+          :boxStyle="{
+            width: '100%',
+            height: '400px',
+            backgroundColor: '#f8f8f8',
+            margin: 'auto'
+          }"
+          :img="labCropImageSrc"
+          :options="{
+            viewMode: 1,
+            dragMode: 'move',
+            aspectRatio: NaN,
+            autoCropArea: 0.8,
+            restore: false,
+            guides: true,
+            center: true,
+            highlight: false,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            toggleDragModeOnDblclick: false
+          }"
+          @ready="onLabCropReady"
+          @crop="onLabCrop"
+        />
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cancelLabCrop">取消</el-button>
+          <el-button type="primary" @click="confirmLabCrop">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Upload, Check, RefreshLeft, Plus, Delete, Picture } from '@element-plus/icons-vue'
+import { Check, RefreshLeft, Plus, Delete, Picture } from '@element-plus/icons-vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import BannerManagement from '@/components/admin/BannerManagement.vue'
+import VuePictureCropper, { cropper } from 'vue-picture-cropper'
+import 'cropperjs/dist/cropper.css'
+import * as centerOverviewApi from '@/services/centerOverviewApi'
 
 // Tab切换
 const activeTab = ref('banner')
+const loading = ref(false)
 
 // ========== Banner管理 ==========
 const bannerForm = reactive({
@@ -277,267 +262,640 @@ const bannerForm = reactive({
   videoUrlExternal: ''
 })
 
-const handleBannerSave = (data) => {
-  console.log('保存Banner数据:', data)
-  // 这里可以调用API保存数据
+const handleBannerSave = async (data) => {
+  try {
+    loading.value = true
+    const formData = {
+      type: data.type
+    }
+    
+    if (data.type === 'image') {
+      // 优先使用 Base64 图片（来自裁剪）
+      if (data.imageUrl && data.imageUrl.startsWith('data:image/')) {
+        formData.imageUrl = data.imageUrl
+      } else if (data.imageFile) {
+        formData.image = data.imageFile
+      }
+    } else if (data.type === 'video') {
+      if (data.videoFile) {
+        formData.video = data.videoFile
+      } else if (data.videoUrlExternal) {
+        formData.videoUrlExternal = data.videoUrlExternal
+      }
+    }
+    
+    const response = await centerOverviewApi.saveBanner(formData)
+    if (response.success) {
+      ElMessage.success('保存成功')
+      // 更新本地数据
+      if (response.data) {
+        Object.assign(bannerForm, {
+          type: response.data.type,
+          imageUrl: response.data.imageUrl ? getImageUrl(response.data.imageUrl) : '',
+          videoUrl: response.data.videoUrl ? getImageUrl(response.data.videoUrl) : '',
+          videoUrlExternal: response.data.videoUrlExternal || ''
+        })
+      }
+    }
+  } catch (error) {
+    console.error('保存Banner失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 获取图片完整URL
+const getImageUrl = (imageUrl) => {
+  if (!imageUrl) return ''
+  // 如果是相对路径，直接返回（由nginx处理）
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
+    return imageUrl
+  }
+  return imageUrl
+}
+
+// 加载Banner数据
+const loadBanner = async () => {
+  try {
+    const response = await centerOverviewApi.getBanner()
+    if (response.success && response.data) {
+      // 有数据时，更新表单
+      bannerForm.type = response.data.type || 'image'
+      bannerForm.imageUrl = response.data.imageUrl ? getImageUrl(response.data.imageUrl) : ''
+      bannerForm.videoUrl = response.data.videoUrl ? getImageUrl(response.data.videoUrl) : ''
+      bannerForm.videoUrlExternal = response.data.videoUrlExternal || ''
+    } else {
+      // 没有数据时，清空表单
+      bannerForm.type = 'image'
+      bannerForm.imageUrl = ''
+      bannerForm.videoUrl = ''
+      bannerForm.videoUrlExternal = ''
+    }
+  } catch (error) {
+    console.error('加载Banner失败:', error)
+  }
+}
+
+// 删除Banner
+const handleBannerDelete = async (data) => {
+  try {
+    loading.value = true
+    const response = await centerOverviewApi.deleteBanner()
+    if (response.success) {
+      ElMessage.success('删除成功')
+      // 重新加载Banner数据以更新状态
+      await loadBanner()
+    } else {
+      ElMessage.error(response.message || '删除失败')
+    }
+  } catch (error) {
+    console.error('删除Banner失败:', error)
+    ElMessage.error('删除Banner失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 // ========== 详情管理 ==========
-const videoUploadRef = ref(null)
-const videoFileList = ref([])
-const externalVideoUrl = ref('')
-
 const detailForm = reactive({
-  videoUrl: '',
-  videoUrlExternal: '',
-  mainTitle: '东南大学建筑学院实验教学中心',
-  background: '<p>东南大学建筑学院实验教学中心（以下简称"中心"）是在整合建筑学院原有各专业实验室的基础上，于2025年2月正式成立的综合性实验教学平台。中心致力于为建筑学院各专业的实验教学、科研创新和社会服务提供强有力的支撑。</p>',
-  overview: '<p>中心现为省级实验教学示范中心，拥有15个核心实验平台，涵盖6大研究方向/教学领域。中心现有实体实验室31间，总面积超过2200平方米，配备各类仪器设备1200余台（套），设备总值约8000万元，其中大型仪器设备100余台（套），价值约3500万元。</p><p>中心现有专兼职教师30余人，专职技术人员6人。每年承担实验教学课时数超过2000学时，实验项目数超过300项，服务学生人数超过2000人次。</p><p>中心在实验教学、科研创新、社会服务等方面取得了显著成效，为培养高素质建筑人才和推动学科发展做出了重要贡献。</p>',
-  vision: '<p>中心将继续秉承"以学生为中心，以能力培养为导向"的理念，不断推进实验教学改革与创新，努力建设成为国内领先、国际知名的实验教学创新示范中心，为培养具有创新精神和实践能力的高素质建筑人才提供更加优质的教学资源和实验环境。</p>'
+  mainTitle: '',
+  background: '',
+  overview: '',
+  vision: ''
 })
 
-const handleVideoChange = (file) => {
-  const maxSize = 200 * 1024 * 1024
-  if (file.size > maxSize) {
-    ElMessage.warning('视频文件大小不能超过200MB')
-    return false
-  }
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    detailForm.videoUrl = e.target.result
-    detailForm.videoUrlExternal = ''
-    ElMessage.success('视频上传成功')
-  }
-  reader.readAsDataURL(file.raw)
-}
-
-const handleVideoDelete = () => {
-  ElMessageBox.confirm('确定要删除视频吗？', '提示', { type: 'warning' })
-    .then(() => {
-      detailForm.videoUrl = ''
-      videoFileList.value = []
-      if (videoUploadRef.value) {
-        videoUploadRef.value.clearFiles()
-      }
-      ElMessage.success('删除成功')
-    })
-    .catch(() => {})
-}
-
-const handleSetExternalVideo = () => {
-  if (!externalVideoUrl.value || !externalVideoUrl.value.trim()) {
-    ElMessage.warning('请输入视频URL')
-    return
-  }
-  detailForm.videoUrlExternal = externalVideoUrl.value.trim()
-  detailForm.videoUrl = ''
-  videoFileList.value = []
-  if (videoUploadRef.value) {
-    videoUploadRef.value.clearFiles()
-  }
-  externalVideoUrl.value = ''
-  ElMessage.success('外部视频URL设置成功')
-}
-
-const handleVideoExternalDelete = () => {
-  ElMessageBox.confirm('确定要删除外部视频吗？', '提示', { type: 'warning' })
-    .then(() => {
-      detailForm.videoUrlExternal = ''
-      ElMessage.success('删除成功')
-    })
-    .catch(() => {})
-}
-
-const handleDetailSave = () => {
+const handleDetailSave = async () => {
   if (!detailForm.mainTitle || !detailForm.mainTitle.trim()) {
     ElMessage.warning('请输入主标题')
     return
   }
-  console.log('保存详情数据:', detailForm)
-  ElMessage.success('保存成功')
+  try {
+    loading.value = true
+    const formData = {
+      mainTitle: detailForm.mainTitle,
+      background: detailForm.background || '',
+      overview: detailForm.overview || '',
+      vision: detailForm.vision || ''
+    }
+    
+    const response = await centerOverviewApi.saveDetail(formData)
+    if (response.success) {
+      ElMessage.success('保存成功')
+      if (response.data) {
+        Object.assign(detailForm, {
+          mainTitle: response.data.mainTitle,
+          background: response.data.background || '',
+          overview: response.data.overview || '',
+          vision: response.data.vision || ''
+        })
+      }
+    }
+  } catch (error) {
+    console.error('保存详情失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 加载详情数据
+const loadDetail = async () => {
+  try {
+    const response = await centerOverviewApi.getDetail()
+    if (response.success && response.data) {
+      Object.assign(detailForm, {
+        mainTitle: response.data.mainTitle || '',
+        background: response.data.background || '',
+        overview: response.data.overview || '',
+        vision: response.data.vision || ''
+      })
+    }
+  } catch (error) {
+    console.error('加载详情失败:', error)
+  }
 }
 
 const handleDetailReset = () => {
   ElMessageBox.confirm('确定要重置所有内容吗？', '提示', { type: 'warning' })
-    .then(() => {
-      detailForm.videoUrl = ''
-      detailForm.videoUrlExternal = ''
-      detailForm.mainTitle = '东南大学建筑学院实验教学中心'
-      detailForm.background = '<p>建设背景内容...</p>'
-      detailForm.overview = '<p>现状概况内容...</p>'
-      detailForm.vision = '<p>发展愿景内容...</p>'
+    .then(async () => {
+      await loadDetail()
       ElMessage.success('重置成功')
     })
     .catch(() => {})
 }
 
 // ========== 组织架构管理 ==========
-const organizationForm = reactive({
-  director: ['王伟'],
-  deputyDirector: ['华好', '冯世虎'],
-  members: ['是罪', '李超明', '兰祥启', '刘宇衡', '周海飞']
-})
+// 角色类型列表，每个角色类型包含角色名称和成员列表（成员包含id和name）
+const organizationRoleGroups = ref([])
 
-const addPerson = (type) => {
-  organizationForm[type].push('')
+// 添加角色类型
+const addRoleGroup = () => {
+  organizationRoleGroups.value.push({
+    roleName: '',
+    members: []
+  })
 }
 
-const removePerson = (type, index) => {
-  if (organizationForm[type].length <= 1 && type === 'director') {
-    ElMessage.warning('至少需要保留一位主任')
+// 删除角色类型
+const removeRoleGroup = async (index) => {
+  if (organizationRoleGroups.value.length <= 1) {
+    ElMessage.warning('至少需要保留一个角色类型')
     return
   }
-  ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' })
-    .then(() => {
-      organizationForm[type].splice(index, 1)
+  
+  const roleGroup = organizationRoleGroups.value[index]
+  if (!roleGroup.roleName || !roleGroup.roleName.trim()) {
+    // 如果角色名称为空，直接删除（前端未保存的）
+    organizationRoleGroups.value.splice(index, 1)
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm('确定要删除这个角色类型吗？', '提示', { type: 'warning' })
+    
+    loading.value = true
+    const response = await centerOverviewApi.deleteOrganizationRole(roleGroup.roleName)
+    if (response.success) {
+      organizationRoleGroups.value.splice(index, 1)
       ElMessage.success('删除成功')
-    })
-    .catch(() => {})
+      // 重新加载数据以确保一致性
+      await loadOrganization()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除角色类型失败:', error)
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleOrganizationSave = () => {
-  if (organizationForm.director.length === 0 || organizationForm.director.every(name => !name.trim())) {
-    ElMessage.warning('至少需要设置一位主任')
+// 向角色类型添加成员
+const addPersonToRole = async (roleIndex) => {
+  const roleGroup = organizationRoleGroups.value[roleIndex]
+  
+  // 如果角色名称为空，先提示输入
+  if (!roleGroup.roleName || !roleGroup.roleName.trim()) {
+    ElMessage.warning('请先输入角色类型名称')
     return
   }
-  const data = {
-    director: organizationForm.director.filter(name => name.trim()),
-    deputyDirector: organizationForm.deputyDirector.filter(name => name.trim()),
-    members: organizationForm.members.filter(name => name.trim())
-  }
-  console.log('保存组织架构数据:', data)
-  ElMessage.success('保存成功')
+  
+  // 先添加到前端列表
+  const newPerson = { id: null, name: '' }
+  roleGroup.members.push(newPerson)
 }
 
-const handleOrganizationReset = () => {
-  ElMessageBox.confirm('确定要重置所有内容吗？', '提示', { type: 'warning' })
-    .then(() => {
-      organizationForm.director = ['王伟']
-      organizationForm.deputyDirector = ['华好', '冯世虎']
-      organizationForm.members = ['是罪', '李超明', '兰祥启', '刘宇衡', '周海飞']
-      ElMessage.success('重置成功')
-    })
-    .catch(() => {})
+// 从角色类型删除成员
+const removePersonFromRole = async (roleIndex, personIndex, person) => {
+  const roleGroup = organizationRoleGroups.value[roleIndex]
+  
+  // 如果有ID，说明是已保存的成员，需要调用API删除
+  if (person.id) {
+    try {
+      await ElMessageBox.confirm('确定要删除这个成员吗？', '提示', { type: 'warning' })
+      
+      loading.value = true
+      const response = await centerOverviewApi.deleteOrganizationMember(person.id)
+      if (response.success) {
+        roleGroup.members.splice(personIndex, 1)
+        ElMessage.success('删除成功')
+      }
+    } catch (error) {
+      if (error !== 'cancel') {
+        console.error('删除成员失败:', error)
+      }
+    } finally {
+      loading.value = false
+    }
+  } else {
+    // 没有ID，说明是前端临时添加的，直接删除
+    roleGroup.members.splice(personIndex, 1)
+  }
+}
+
+// 处理成员姓名变化（保存）
+const handlePersonNameChange = async (roleIndex, personIndex, person) => {
+  const roleGroup = organizationRoleGroups.value[roleIndex]
+  
+  if (!roleGroup.roleName || !roleGroup.roleName.trim()) {
+    ElMessage.warning('请先输入角色类型名称')
+    return
+  }
+  
+  const name = person.name && person.name.trim()
+  if (!name) {
+    return
+  }
+  
+  // 如果已经有ID，说明是已保存的成员，需要更新（这里暂时只保存新增）
+  if (person.id) {
+    // 已保存的成员，名称变更暂时不处理（或者可以实现更新API）
+    return
+  }
+  
+  // 如果没有ID，说明是新添加的，调用API保存
+  try {
+    loading.value = true
+    const response = await centerOverviewApi.addOrganizationMember(roleGroup.roleName, name)
+    if (response.success && response.data) {
+      // 更新成员的ID
+      person.id = response.data.id
+      ElMessage.success('添加成功')
+      // 重新加载数据以确保一致性
+      await loadOrganization()
+    }
+  } catch (error) {
+    console.error('添加成员失败:', error)
+    // 添加失败，移除这个成员
+    roleGroup.members.splice(personIndex, 1)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 处理角色名称变化
+const handleRoleNameChange = async (roleIndex, roleGroup) => {
+  const oldRoleName = roleGroup.oldRoleName || ''
+  const newRoleName = roleGroup.roleName && roleGroup.roleName.trim()
+  
+  if (!newRoleName) {
+    return
+  }
+  
+  // 如果角色名称没有变化，不需要更新
+  if (oldRoleName === newRoleName) {
+    return
+  }
+  
+  // 如果是新添加的角色类型（没有oldRoleName），不需要调用API
+  if (!oldRoleName || roleGroup.members.length === 0 || !roleGroup.members.some(m => m.id)) {
+    roleGroup.oldRoleName = newRoleName
+    return
+  }
+  
+  // 如果有旧名称且有已保存的成员，需要更新角色名称
+  try {
+    loading.value = true
+    const response = await centerOverviewApi.updateOrganizationRoleName(oldRoleName, newRoleName)
+    if (response.success) {
+      roleGroup.oldRoleName = newRoleName
+      ElMessage.success('更新成功')
+      // 重新加载数据以确保一致性
+      await loadOrganization()
+    }
+  } catch (error) {
+    console.error('更新角色名称失败:', error)
+    // 恢复原来的名称
+    roleGroup.roleName = oldRoleName
+  } finally {
+    loading.value = false
+  }
+}
+
+// 加载组织架构数据
+const loadOrganization = async () => {
+  try {
+    const response = await centerOverviewApi.getOrganization()
+    if (response.success && response.data) {
+      const roleGroups = []
+      // 将后端返回的数据转换为前端格式
+      for (const [roleName, members] of Object.entries(response.data)) {
+        roleGroups.push({
+          roleName: roleName,
+          oldRoleName: roleName, // 保存原始名称用于更新时比较
+          members: members.length > 0 ? members.map(item => ({
+            id: item.id,
+            name: item.name
+          })) : []
+        })
+      }
+      
+      // 如果没有数据，保持为空数组
+      organizationRoleGroups.value = roleGroups
+    }
+  } catch (error) {
+    console.error('加载组织架构失败:', error)
+  }
 }
 
 // ========== 下设实验室管理 ==========
-const laboratoryList = ref([
-  {
-    id: 1,
-    name: '设计基础实训实验室',
-    image: 'https://via.placeholder.com/400x200?text=设计基础实训实验室',
-    link: '/lab/design-basic',
-    sort: 1
-  },
-  {
-    id: 2,
-    name: '智能建筑实验室',
-    image: 'https://via.placeholder.com/400x200?text=智能建筑实验室',
-    link: '/lab/smart-building',
-    sort: 2
-  },
-  {
-    id: 3,
-    name: '建筑物理实验室',
-    image: 'https://via.placeholder.com/400x200?text=建筑物理实验室',
-    link: '/lab/building-physics',
-    sort: 3
-  },
-  {
-    id: 4,
-    name: '城市大数据与虚拟仿真实验室',
-    image: 'https://via.placeholder.com/400x200?text=城市大数据与虚拟仿真实验室',
-    link: '/lab/urban-bigdata',
-    sort: 4
-  },
-  {
-    id: 5,
-    name: '遗产保护实验室',
-    image: 'https://via.placeholder.com/400x200?text=遗产保护实验室',
-    link: '/lab/heritage',
-    sort: 5
-  },
-  {
-    id: 6,
-    name: '数字景观实验室',
-    image: 'https://via.placeholder.com/400x200?text=数字景观实验室',
-    link: '/lab/digital-landscape',
-    sort: 6
+const laboratoryList = ref([])
+
+// 加载实验室列表
+const loadLaboratoryList = async () => {
+  try {
+    loading.value = true
+    const response = await centerOverviewApi.getLaboratoryList()
+    if (response.success && response.data) {
+      laboratoryList.value = response.data.map(item => ({
+        id: item.id,
+        name: item.name,
+        imageUrl: item.imageUrl,
+        link: item.link || '',
+        sortOrder: item.sortOrder || 0
+      }))
+    }
+  } catch (error) {
+    console.error('加载实验室列表失败:', error)
+  } finally {
+    loading.value = false
   }
-])
+}
 
 const labDialogVisible = ref(false)
 const labDialogTitle = ref('添加实验室')
 const labForm = reactive({
   id: null,
   name: '',
-  image: '',
+  imageUrl: '',
   link: '',
-  sort: 0
+  sortOrder: 0
 })
 const labImageFileList = ref([])
-const labEditIndex = ref(-1)
+const labImageFile = ref(null)
+const labImageUploadRef = ref(null)
+
+// 裁剪相关
+const labCropDialogVisible = ref(false)
+const labCropImageSrc = ref('')
+const labPendingImageFile = ref(null)
+const labPictureCropperRef = ref(null)
+const labCropperReady = ref(false)
 
 const handleLabAdd = () => {
   labDialogTitle.value = '添加实验室'
   labForm.id = null
   labForm.name = ''
-  labForm.image = ''
+  labForm.imageUrl = ''
   labForm.link = ''
-  labForm.sort = laboratoryList.value.length + 1
+  labForm.sortOrder = laboratoryList.value.length + 1
   labImageFileList.value = []
-  labEditIndex.value = -1
+  labImageFile.value = null
   labDialogVisible.value = true
 }
 
-const handleLabEdit = (row, index) => {
+const handleLabEdit = (row) => {
   labDialogTitle.value = '编辑实验室'
   labForm.id = row.id
   labForm.name = row.name
-  labForm.image = row.image
-  labForm.link = row.link
-  labForm.sort = row.sort
-  labImageFileList.value = row.image ? [{ url: row.image }] : []
-  labEditIndex.value = index
+  labForm.imageUrl = row.imageUrl
+  labForm.link = row.link || ''
+  labForm.sortOrder = row.sortOrder || 0
+  labImageFileList.value = row.imageUrl ? [{ url: getImageUrl(row.imageUrl) }] : []
+  labImageFile.value = null
   labDialogVisible.value = true
 }
 
 const handleLabImageChange = (file) => {
+  // 保存待处理的文件
+  labPendingImageFile.value = file
+  
+  // 读取文件为base64，用于裁剪
   const reader = new FileReader()
-  reader.onload = (e) => {
-    labForm.image = e.target.result
+  reader.onload = async (e) => {
+    labCropImageSrc.value = e.target.result
+    // 等待DOM更新后打开裁剪对话框
+    await nextTick()
+    await nextTick()
+    labCropDialogVisible.value = true
   }
+  
+  reader.onerror = () => {
+    ElMessage.error('读取文件失败')
+    if (labImageUploadRef.value) {
+      labImageUploadRef.value.clearFiles()
+    }
+    labPendingImageFile.value = null
+  }
+  
   reader.readAsDataURL(file.raw)
 }
 
-const handleLabSubmit = () => {
+const handleLabImageRemove = () => {
+  labImageFile.value = null
+  labForm.imageUrl = ''
+  labImageFileList.value = []
+}
+
+// 裁剪器准备就绪
+const onLabCropReady = () => {
+  labCropperReady.value = true
+}
+
+// 裁剪事件
+const onLabCrop = () => {
+  // 实时裁剪预览（可选）
+}
+
+// 取消裁剪
+const cancelLabCrop = () => {
+  labCropDialogVisible.value = false
+  labCropImageSrc.value = ''
+  labPendingImageFile.value = null
+  labCropperReady.value = false
+  // 清空上传组件的文件列表
+  if (labImageUploadRef.value) {
+    labImageUploadRef.value.clearFiles()
+  }
+  labImageFileList.value = []
+}
+
+// 确认裁剪
+const confirmLabCrop = () => {
+  if (!labCropperReady.value || !cropper || !labPendingImageFile.value) {
+    ElMessage.error('裁剪器未准备好，请稍候重试')
+    return
+  }
+  
+  try {
+    // 获取裁剪后的base64图片
+    const croppedCanvas = cropper.getCroppedCanvas({
+      width: 1920,  // 推荐宽度
+      height: 1080, // 推荐高度（16:9比例）
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high'
+    })
+    
+    if (!croppedCanvas) {
+      ElMessage.error('裁剪失败，请重试')
+      return
+    }
+    
+    // 获取裁剪后的图片URL（Base64格式）
+    const croppedImageUrl = croppedCanvas.toDataURL('image/jpeg', 0.9)
+    
+    // 更新表单数据（保存Base64）
+    labForm.imageUrl = croppedImageUrl
+    
+    // 更新文件列表用于显示
+    labImageFileList.value = [{
+      uid: Date.now(),
+      url: croppedImageUrl,
+      name: '裁剪后的图片.jpg'
+    }]
+    
+    // 清空之前的文件对象，确保保存时使用 Base64
+    labImageFile.value = null
+    
+    ElMessage.success('图片裁剪成功')
+    
+    // 关闭裁剪对话框
+    labCropDialogVisible.value = false
+    labCropImageSrc.value = ''
+    labPendingImageFile.value = null
+    labCropperReady.value = false
+  } catch (error) {
+    console.error('裁剪图片失败:', error)
+    ElMessage.error('裁剪图片失败')
+  }
+}
+
+const handleLabSubmit = async () => {
+  console.log('=== 提交实验室数据 ===')
+  console.log('labForm:', labForm)
+  console.log('labImageFile.value:', labImageFile.value)
+  console.log('labForm.imageUrl:', labForm.imageUrl ? (labForm.imageUrl.substring(0, 50) + '...') : 'null')
+  console.log('labImageFileList.value:', labImageFileList.value)
+  
   if (!labForm.name || !labForm.name.trim()) {
     ElMessage.warning('请输入实验室名称')
     return
   }
-  if (!labForm.image) {
+  
+  // 检查是否有图片：裁剪后的Base64图片 或 上传的文件 或 编辑时已有的图片
+  const hasCroppedImage = labForm.imageUrl && labForm.imageUrl.startsWith('data:image/')
+  const hasUploadedFile = labImageFile.value !== null
+  const hasExistingImage = labForm.id && labForm.imageUrl && !labForm.imageUrl.startsWith('data:image/')
+  
+  console.log('hasCroppedImage:', hasCroppedImage)
+  console.log('hasUploadedFile:', hasUploadedFile)
+  console.log('hasExistingImage:', hasExistingImage)
+  
+  // 新增时必须上传图片
+  if (!labForm.id && !hasCroppedImage && !hasUploadedFile) {
+    console.log('新增模式：缺少图片')
     ElMessage.warning('请上传图片')
     return
   }
-  if (labEditIndex.value >= 0) {
-    laboratoryList.value[labEditIndex.value] = { ...labForm, id: labForm.id || Date.now() }
-    ElMessage.success('编辑成功')
-  } else {
-    laboratoryList.value.push({ ...labForm, id: Date.now() })
-    laboratoryList.value.sort((a, b) => a.sort - b.sort)
-    ElMessage.success('添加成功')
+  
+  // 编辑时如果没有新图片也没有旧图片，需要提示
+  if (labForm.id && !hasCroppedImage && !hasUploadedFile && !hasExistingImage) {
+    console.log('编辑模式：缺少图片')
+    ElMessage.warning('请上传图片')
+    return
   }
-  labDialogVisible.value = false
+  
+  try {
+    loading.value = true
+    const formData = {
+      name: labForm.name,
+      link: labForm.link || '',
+      sortOrder: labForm.sortOrder
+    }
+    
+    // 优先使用 Base64 图片（来自裁剪）
+    if (labForm.imageUrl && labForm.imageUrl.startsWith('data:image/')) {
+      console.log('使用裁剪后的Base64图片')
+      formData.imageUrl = labForm.imageUrl
+    } else if (labImageFile.value) {
+      console.log('使用上传的文件')
+      formData.image = labImageFile.value
+    } else {
+      console.log('编辑模式：使用现有图片，不传递图片参数')
+    }
+    
+    console.log('提交的formData:', {
+      ...formData,
+      imageUrl: formData.imageUrl ? (formData.imageUrl.substring(0, 50) + '...') : undefined,
+      image: formData.image ? 'File对象' : undefined
+    })
+    
+    let response
+    if (labForm.id) {
+      // 编辑
+      response = await centerOverviewApi.updateLaboratory(labForm.id, formData)
+    } else {
+      // 新增
+      response = await centerOverviewApi.addLaboratory(formData)
+    }
+    
+    if (response.success) {
+      ElMessage.success(labForm.id ? '编辑成功' : '添加成功')
+      labDialogVisible.value = false
+      await loadLaboratoryList()
+    }
+  } catch (error) {
+    console.error('保存实验室失败:', error)
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleLabDelete = (index) => {
+const handleLabDelete = (id) => {
   ElMessageBox.confirm('确定要删除这个实验室吗？', '提示', { type: 'warning' })
-    .then(() => {
-      laboratoryList.value.splice(index, 1)
-      ElMessage.success('删除成功')
+    .then(async () => {
+      try {
+        loading.value = true
+        const response = await centerOverviewApi.deleteLaboratory(id)
+        if (response.success) {
+          ElMessage.success('删除成功')
+          await loadLaboratoryList()
+        }
+      } catch (error) {
+        console.error('删除实验室失败:', error)
+      } finally {
+        loading.value = false
+      }
     })
     .catch(() => {})
 }
+
+// 页面加载时获取数据
+onMounted(async () => {
+  await loadBanner()
+  await loadDetail()
+  await loadOrganization()
+  await loadLaboratoryList()
+})
 </script>
 
 <style scoped>
@@ -578,31 +936,40 @@ const handleLabDelete = (index) => {
 }
 
 
-.video-upload-section {
+.organization-management {
   width: 100%;
 }
 
-.video-preview {
-  margin-top: 15px;
-  padding: 15px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
+.role-group {
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
 }
 
-.external-video-info {
-  margin-top: 15px;
-  padding: 15px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
+.role-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e4e7ed;
 }
 
-.external-video-info p {
-  margin-bottom: 10px;
-  color: #606266;
+.role-header .el-input {
+  font-weight: bold;
+  font-size: 16px;
 }
 
-.video-placeholder {
-  margin-top: 15px;
+.add-role-group {
+  margin-top: 20px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.organization-actions {
+  margin-top: 30px;
+  text-align: center;
 }
 
 .person-list {
@@ -614,12 +981,14 @@ const handleLabDelete = (index) => {
   align-items: center;
   margin-bottom: 15px;
   padding: 10px;
-  background-color: #f5f7fa;
+  background-color: #ffffff;
   border-radius: 4px;
+  border: 1px solid #dcdfe6;
 }
 
 .person-item:hover {
   background-color: #ecf5ff;
+  border-color: #b3d8ff;
 }
 
 .empty-state {

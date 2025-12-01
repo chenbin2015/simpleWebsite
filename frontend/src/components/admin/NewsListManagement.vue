@@ -10,7 +10,7 @@
       </div>
     </template>
 
-    <el-table :data="newsList" border style="width: 100%">
+    <el-table :data="newsList" border style="width: 100%" v-loading="loading">
       <el-table-column type="index" label="序号" width="60" />
       <el-table-column prop="title" label="标题" min-width="200" />
       <el-table-column prop="author" label="作者" width="120" />
@@ -35,11 +35,11 @@
         </template>
       </el-table-column>
       <el-table-column label="操作" width="200" fixed="right">
-        <template #default="{ row, $index }">
-          <el-button type="primary" size="small" @click="handleEdit(row, $index)">
+        <template #default="{ row }">
+          <el-button type="primary" size="small" @click="handleEdit(row)">
             编辑
           </el-button>
-          <el-button type="danger" size="small" @click="handleDelete($index)">
+          <el-button type="danger" size="small" @click="handleDelete(newsList.findIndex(n => n.id === row.id))">
             删除
           </el-button>
         </template>
@@ -98,10 +98,12 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
+import * as moduleNewsApi from '@/services/moduleNewsApi'
+import * as menuApi from '@/services/menuApi'
 
 const props = defineProps({
   menu: {
@@ -112,18 +114,9 @@ const props = defineProps({
 
 const emit = defineEmits(['update'])
 
-const newsList = ref([
-  {
-    id: 1,
-    title: '新闻标题1',
-    author: '管理员',
-    date: '2025-01-15',
-    tags: ['重要', '通知'],
-    summary: '这是新闻摘要',
-    content: '<p>这是新闻内容...</p>',
-    status: 'published'
-  }
-])
+const newsList = ref([])
+const loading = ref(false)
+const menuIdRef = ref(null) // 存储数据库菜单ID
 
 const availableTags = ref(['重要', '通知', '公告', '活动'])
 
@@ -141,6 +134,87 @@ const formData = reactive({
 })
 const editIndex = ref(-1)
 
+// 根据菜单名称查找数据库菜单ID
+const findMenuIdByName = async (menuName, categoryName) => {
+  try {
+    const response = await menuApi.getAllMenus()
+    if (response.success && response.data) {
+      // 分类名称到数据库父菜单名称的映射
+      const categoryToParentName = {
+        'experiment-teaching': '实验教学',
+        'experiment-resources': '实验资源',
+        'construction-results': '建设成效',
+        'safety-management': '安全管理'
+      }
+      
+      const parentName = categoryToParentName[categoryName]
+      if (!parentName) return null
+      
+      // 查找匹配的菜单
+      for (const parentMenu of response.data) {
+        if (parentMenu.name === parentName && parentMenu.children) {
+          const childMenu = parentMenu.children.find(child => child.name === menuName)
+          if (childMenu) {
+            return childMenu.id
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('查找菜单ID失败:', error)
+  }
+  return null
+}
+
+// 获取菜单的数据库ID（从props或查找）
+const getMenuId = async () => {
+  // 先尝试从props获取
+  if (props.menu.menuId && typeof props.menu.menuId === 'number') {
+    return props.menu.menuId
+  }
+  
+  // 如果menuIdRef已缓存，直接返回
+  if (menuIdRef.value) {
+    return menuIdRef.value
+  }
+  
+  // 尝试通过菜单名称查找
+  const foundId = await findMenuIdByName(props.menu.name, props.menu.category)
+  if (foundId) {
+    menuIdRef.value = foundId
+    return foundId
+  }
+  
+  return null
+}
+
+// 加载新闻列表
+const loadNewsList = async () => {
+  const menuId = await getMenuId()
+  
+  if (!menuId) {
+    console.warn('无法找到菜单的数据库ID，无法加载新闻列表。菜单对象:', props.menu)
+    newsList.value = []
+    return
+  }
+  
+  loading.value = true
+  try {
+    const response = await moduleNewsApi.getNewsListByMenuId(menuId)
+    if (response.success && response.data) {
+      newsList.value = response.data
+    } else {
+      newsList.value = []
+    }
+  } catch (error) {
+    console.error('加载新闻列表失败:', error)
+    ElMessage.error('加载新闻列表失败')
+    newsList.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
 const handleAdd = () => {
   dialogTitle.value = '添加新闻'
   formData.id = null
@@ -155,45 +229,108 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row, index) => {
+const handleEdit = (row) => {
   dialogTitle.value = '编辑新闻'
   formData.id = row.id
   formData.title = row.title
   formData.author = row.author
-  formData.date = row.date
+  // 日期处理：如果有publishTime则使用，否则使用date字段
+  if (row.publishTime) {
+    formData.date = row.publishTime.split('T')[0] // 提取日期部分
+  } else if (row.date) {
+    formData.date = row.date
+  } else {
+    formData.date = new Date().toISOString().split('T')[0]
+  }
   formData.tags = [...(row.tags || [])]
   formData.summary = row.summary || ''
   formData.content = row.content || ''
   formData.status = row.status
-  editIndex.value = index
+  editIndex.value = newsList.value.findIndex(n => n.id === row.id)
   dialogVisible.value = true
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!formData.title || !formData.title.trim()) {
     ElMessage.warning('请输入标题')
     return
   }
-  if (editIndex.value >= 0) {
-    newsList.value[editIndex.value] = { ...formData }
-    ElMessage.success('编辑成功')
-  } else {
-    newsList.value.push({ ...formData, id: Date.now() })
-    ElMessage.success('添加成功')
+  
+  const menuId = await getMenuId()
+  if (!menuId) {
+    ElMessage.error('无法找到菜单的数据库ID，无法保存新闻')
+    return
   }
-  dialogVisible.value = false
-  emit('update')
+  
+  try {
+    const newsData = {
+      title: formData.title,
+      author: formData.author,
+      content: formData.content,
+      tags: formData.tags,
+      summary: formData.summary,
+      status: formData.status,
+      date: formData.date // 传递日期字段
+    }
+    
+    if (editIndex.value >= 0 && formData.id) {
+      // 更新
+      const response = await moduleNewsApi.updateNews(formData.id, newsData)
+      if (response.success) {
+        ElMessage.success('编辑成功')
+        await loadNewsList() // 重新加载列表
+        dialogVisible.value = false
+        emit('update')
+      } else {
+        throw new Error(response.message || '更新失败')
+      }
+    } else {
+      // 添加
+      const response = await moduleNewsApi.addNews(menuId, newsData)
+      if (response.success) {
+        ElMessage.success('添加成功')
+        await loadNewsList() // 重新加载列表
+        dialogVisible.value = false
+        emit('update')
+      } else {
+        throw new Error(response.message || '添加失败')
+      }
+    }
+  } catch (error) {
+    console.error('保存新闻失败:', error)
+    ElMessage.error(error.message || '保存新闻失败')
+  }
 }
 
-const handleDelete = (index) => {
+const handleDelete = async (index) => {
+  const news = newsList.value[index]
+  if (!news || !news.id) {
+    ElMessage.error('新闻数据无效')
+    return
+  }
+  
   ElMessageBox.confirm('确定要删除这条新闻吗？', '提示', { type: 'warning' })
-    .then(() => {
-      newsList.value.splice(index, 1)
-      ElMessage.success('删除成功')
-      emit('update')
+    .then(async () => {
+      try {
+        const response = await moduleNewsApi.deleteNews(news.id)
+        if (response.success) {
+          ElMessage.success('删除成功')
+          await loadNewsList() // 重新加载列表
+          emit('update')
+        } else {
+          throw new Error(response.message || '删除失败')
+        }
+      } catch (error) {
+        console.error('删除新闻失败:', error)
+        ElMessage.error(error.message || '删除新闻失败')
+      }
     })
     .catch(() => {})
 }
+
+onMounted(() => {
+  loadNewsList()
+})
 </script>
 
 <style scoped>

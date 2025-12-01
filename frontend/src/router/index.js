@@ -74,6 +74,12 @@ const routes = [
     name: 'PopularScience',
     component: PopularScience
   },
+  // 管理后台登录页
+  {
+    path: '/admin/login',
+    name: 'AdminLogin',
+    component: () => import('../views/admin/Login.vue')
+  },
   // 管理后台路由
   {
     path: '/admin',
@@ -92,8 +98,13 @@ const routes = [
       },
       {
         path: 'content',
+        redirect: '/admin/content/experiment-teaching'
+      },
+      {
+        path: 'content/:category',
         name: 'AdminContent',
-        component: () => import('../views/admin/CommonModulesManagement.vue')
+        component: () => import('../views/admin/CommonModulesManagement.vue'),
+        props: true
       },
       {
         path: 'popular-science',
@@ -112,6 +123,31 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// 路由守卫：保护管理后台路由
+router.beforeEach((to, from, next) => {
+  // 获取token
+  const token = localStorage.getItem('token')
+  
+  // 如果是访问管理后台路由（除了登录页）
+  if (to.path.startsWith('/admin') && to.path !== '/admin/login') {
+    // 检查是否有token
+    if (!token) {
+      // 没有token，跳转到登录页
+      next('/admin/login')
+      return
+    }
+  }
+  
+  // 如果已经登录，访问登录页时重定向到管理后台首页
+  if (to.path === '/admin/login' && token) {
+    next('/admin/home')
+    return
+  }
+  
+  // 其他情况正常放行
+  next()
 })
 
 export default router

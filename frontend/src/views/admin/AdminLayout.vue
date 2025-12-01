@@ -85,13 +85,15 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminMenuItems } from '@/config/adminMenu'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { User, Fold, Expand, ArrowDown } from '@element-plus/icons-vue'
+import { clearAuthData } from '@/utils/auth'
 
 const route = useRoute()
+const router = useRouter()
 
 // 菜单折叠状态
 const isCollapse = ref(false)
@@ -111,7 +113,27 @@ const getIconComponent = (iconName) => {
 
 // 退出登录处理
 const handleLogout = () => {
-  ElMessage.info('退出登录功能正在开发中')
+  ElMessageBox.confirm(
+    '确定要退出登录吗？',
+    '退出登录',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+      center: true
+    }
+  ).then(() => {
+    // 清除所有登录信息（包括 localStorage 和 sessionStorage）
+    clearAuthData()
+    
+    // 显示退出成功消息
+    ElMessage.success('已退出登录')
+    
+    // 跳转到登录页
+    router.push('/admin/login')
+  }).catch(() => {
+    // 用户取消退出，不做任何操作
+  })
 }
 </script>
 

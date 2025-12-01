@@ -10,7 +10,7 @@
       </div>
     </template>
 
-    <el-table :data="fileList" border style="width: 100%">
+    <el-table :data="fileList" border style="width: 100%" v-loading="loading">
       <el-table-column type="index" label="序号" width="60" />
       <el-table-column prop="name" label="文件名" min-width="200" />
       <el-table-column prop="category" label="分类" width="120">
@@ -78,9 +78,11 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Upload } from '@element-plus/icons-vue'
+import * as moduleDownloadApi from '@/services/moduleDownloadApi'
+import * as menuApi from '@/services/menuApi'
 
 const props = defineProps({
   menu: {
@@ -91,18 +93,9 @@ const props = defineProps({
 
 const emit = defineEmits(['update'])
 
-const fileList = ref([
-  {
-    id: 1,
-    name: '文件1.pdf',
-    category: '文档',
-    size: '2.5MB',
-    type: 'pdf',
-    url: '/uploads/files/file1.pdf',
-    downloadCount: 100,
-    updateTime: '2025-01-15 10:00:00'
-  }
-])
+const fileList = ref([])
+const loading = ref(false)
+const menuIdRef = ref(null) // 存储数据库菜单ID
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加文件')
@@ -116,6 +109,90 @@ const formData = reactive({
 })
 const fileFileList = ref([])
 const editIndex = ref(-1)
+
+// 根据菜单名称查找数据库菜单ID
+const findMenuIdByName = async (menuName, categoryName) => {
+  try {
+    const response = await menuApi.getAllMenus()
+    if (response.success && response.data) {
+      // 分类名称到数据库父菜单名称的映射
+      const categoryToParentName = {
+        'experiment-teaching': '实验教学',
+        'experiment-resources': '实验资源',
+        'construction-results': '建设成效',
+        'safety-management': '安全管理'
+      }
+      
+      const parentName = categoryToParentName[categoryName]
+      if (!parentName) return null
+      
+      // 查找匹配的菜单
+      for (const parentMenu of response.data) {
+        if (parentMenu.name === parentName && parentMenu.children) {
+          const childMenu = parentMenu.children.find(child => child.name === menuName)
+          if (childMenu) {
+            return childMenu.id
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('查找菜单ID失败:', error)
+  }
+  return null
+}
+
+// 获取菜单的数据库ID（从props或查找）
+const getMenuId = async () => {
+  // 先尝试从props获取
+  if (props.menu.menuId && typeof props.menu.menuId === 'number') {
+    return props.menu.menuId
+  }
+  
+  // 如果menuIdRef已缓存，直接返回
+  if (menuIdRef.value) {
+    return menuIdRef.value
+  }
+  
+  // 尝试通过菜单名称查找
+  const foundId = await findMenuIdByName(props.menu.name, props.menu.category)
+  if (foundId) {
+    menuIdRef.value = foundId
+    return foundId
+  }
+  
+  return null
+}
+
+// 加载下载列表
+const loadDownloadList = async () => {
+  const menuId = await getMenuId()
+  
+  if (!menuId) {
+    console.warn('无法找到菜单的数据库ID，无法加载下载列表。菜单对象:', props.menu)
+    fileList.value = []
+    return
+  }
+  
+  loading.value = true
+  try {
+    const response = await moduleDownloadApi.getDownloadListByMenuId(menuId)
+    if (response.success && response.data) {
+      fileList.value = response.data.map(item => ({
+        ...item,
+        url: item.fileUrl // 保持兼容性
+      }))
+    } else {
+      fileList.value = []
+    }
+  } catch (error) {
+    console.error('加载下载列表失败:', error)
+    ElMessage.error('加载下载列表失败')
+    fileList.value = []
+  } finally {
+    loading.value = false
+  }
+}
 
 const formatFileSize = (bytes) => {
   if (!bytes) return '0 B'
@@ -166,61 +243,100 @@ const handleFileChange = (file) => {
   }
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!formData.name || !formData.name.trim()) {
     ElMessage.warning('请输入文件名')
     return
   }
-  if (!formData.file && !formData.url) {
+  
+  // 编辑时如果没有上传新文件，可以使用旧文件
+  if (editIndex.value < 0 && !formData.file) {
     ElMessage.warning('请上传文件')
     return
   }
-
-  const now = new Date().toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }).replace(/\//g, '-')
-
-  if (editIndex.value >= 0) {
-    const file = fileList.value[editIndex.value]
-    fileList.value[editIndex.value] = {
-      ...file,
-      name: formData.name,
-      category: formData.category,
-      type: formData.type,
-      updateTime: now
-    }
-    ElMessage.success('编辑成功')
-  } else {
-    fileList.value.push({
-      id: Date.now(),
-      name: formData.name,
-      category: formData.category,
-      size: formData.file ? formatFileSize(formData.file.size) : '0 B',
-      type: formData.type,
-      url: formData.url || '/uploads/files/' + formData.name,
-      downloadCount: 0,
-      updateTime: now
-    })
-    ElMessage.success('添加成功')
+  
+  const menuId = await getMenuId()
+  if (!menuId) {
+    ElMessage.error('无法找到菜单的数据库ID，无法保存文件')
+    return
   }
-  dialogVisible.value = false
-  emit('update')
+  
+  try {
+    const uploadFormData = new FormData()
+    uploadFormData.append('name', formData.name.trim())
+    if (formData.category) {
+      uploadFormData.append('category', formData.category)
+    }
+    if (formData.type) {
+      uploadFormData.append('fileType', formData.type)
+    }
+    
+    if (editIndex.value >= 0 && formData.id) {
+      // 更新
+      if (formData.file) {
+        uploadFormData.append('file', formData.file)
+      }
+      const response = await moduleDownloadApi.updateDownload(formData.id, uploadFormData)
+      if (response.success) {
+        ElMessage.success('编辑成功')
+        await loadDownloadList() // 重新加载列表
+        dialogVisible.value = false
+        emit('update')
+      } else {
+        throw new Error(response.message || '更新失败')
+      }
+    } else {
+      // 添加 - 必须有文件
+      if (!formData.file) {
+        ElMessage.warning('请上传文件')
+        return
+      }
+      uploadFormData.append('file', formData.file)
+      const response = await moduleDownloadApi.addDownload(menuId, uploadFormData)
+      if (response.success) {
+        ElMessage.success('添加成功')
+        await loadDownloadList() // 重新加载列表
+        dialogVisible.value = false
+        emit('update')
+      } else {
+        throw new Error(response.message || '添加失败')
+      }
+    }
+  } catch (error) {
+    console.error('保存文件失败:', error)
+    ElMessage.error(error.message || '保存文件失败')
+  }
 }
 
-const handleDelete = (index) => {
+const handleDelete = async (index) => {
+  const file = fileList.value[index]
+  if (!file || !file.id) {
+    ElMessage.error('文件数据无效')
+    return
+  }
+  
   ElMessageBox.confirm('确定要删除这个文件吗？', '提示', { type: 'warning' })
-    .then(() => {
-      fileList.value.splice(index, 1)
-      ElMessage.success('删除成功')
-      emit('update')
+    .then(async () => {
+      try {
+        const response = await moduleDownloadApi.deleteDownload(file.id)
+        if (response.success) {
+          ElMessage.success('删除成功')
+          await loadDownloadList() // 重新加载列表
+          emit('update')
+        } else {
+          throw new Error(response.message || '删除失败')
+        }
+      } catch (error) {
+        console.error('删除文件失败:', error)
+        ElMessage.error(error.message || '删除文件失败')
+      }
     })
     .catch(() => {})
 }
+
+onMounted(() => {
+  loadDownloadList()
+})
 </script>
 
 <style scoped>

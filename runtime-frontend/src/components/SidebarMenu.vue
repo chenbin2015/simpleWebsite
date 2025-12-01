@@ -3,31 +3,37 @@
       <el-card class="menu-card">
         <template #header>
           <div class="menu-header">
-            <h3>{{ menuGroup?.title }}</h3>
+            <h3>通用模块</h3>
           </div>
         </template>
         <el-menu
           :default-active="activePath"
           class="vertical-menu"
           :router="true"
+          :default-openeds="defaultOpenedKeys"
+          @open="handleSubMenuOpen"
+          @close="handleSubMenuClose"
         >
-          <!-- 调试信息 -->
-          <div v-if="false" style="padding: 10px; font-size: 12px; color: #666;">
-            <p>activePath: {{ activePath }}</p>
-            <p>activeMenuPath: {{ activeMenuPath }}</p>
-            <p>route.path: {{ route.path }}</p>
-            <p>menuGroup: {{ menuGroup?.title }}</p>
-          </div>
-          <el-menu-item
-            v-for="item in menuGroup?.items"
-            :key="item.key"
-            :index="getMenuItemPath(item)"
+          <!-- 显示所有四个通用模块作为二级菜单 -->
+          <el-sub-menu
+            v-for="group in commonModuleGroups"
+            :key="group.key"
+            :index="group.key"
           >
-            <el-icon v-if="item.icon">
-              <component :is="getIconComponent(item.icon)" />
-            </el-icon>
-            <span>{{ item.name }}</span>
-          </el-menu-item>
+            <template #title>
+              <span>{{ group.title }}</span>
+            </template>
+            <el-menu-item
+              v-for="item in group.items"
+              :key="item.key"
+              :index="getMenuItemPath(group.key, item)"
+            >
+              <el-icon v-if="item.icon">
+                <component :is="getIconComponent(item.icon)" />
+              </el-icon>
+              <span>{{ item.name }}</span>
+            </el-menu-item>
+          </el-sub-menu>
         </el-menu>
       </el-card>
     </div>
@@ -42,38 +48,118 @@ import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
   
   const route = useRoute()
   const activeMenuPath = ref(route.path)
+  const openedKeys = ref([])
   
-  console.log('SidebarMenu - 初始 activeMenuPath:', activeMenuPath.value)
-  console.log('SidebarMenu - 当前路由:', route.path, '查询参数:', route.query)
+  // 定义通用模块的 key 列表（按照显示顺序）
+  const commonModuleKeys = [
+    'experiment-teaching',    // 实验教学
+    'experiment-resources',   // 实验资源
+    'construction-results',   // 建设成效
+    'safety-management'       // 安全管理
+  ]
+  
+  // 获取所有通用模块组
+  const commonModuleGroups = computed(() => {
+    return commonModuleKeys
+      .map(key => menuGroups[key])
+      .filter(group => group !== undefined)
+  })
+  
+  // 默认展开当前激活的菜单组
+  const defaultOpenedKeys = computed(() => {
+    return openedKeys.value
+  })
+  
+  // 处理子菜单展开
+  const handleSubMenuOpen = (key) => {
+    if (!openedKeys.value.includes(key)) {
+      openedKeys.value.push(key)
+    }
+  }
+  
+  // 处理子菜单关闭
+  const handleSubMenuClose = (key) => {
+    const index = openedKeys.value.indexOf(key)
+    if (index > -1) {
+      openedKeys.value.splice(index, 1)
+    }
+  }
+  
+  // 从详情页获取当前菜单组
+  function getCurrentGroupFromDetail() {
+    const from = route.query.from
+    if (!from || from === 'popular-science' || from === 'home') {
+      return null
+    }
+    
+    const allRootTypes = Object.values(menuGroups).map(g => g.key)
+    const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
+    
+    for (const rootType of sortedRootTypes) {
+      if (from.startsWith(rootType + '-')) {
+        return menuGroups[rootType] || null
+      }
+    }
+    
+    return null
+  }
   
   // 计算 activePath：如果是详情页，需要转换为对应的动态路由路径
   const activePath = computed(() => {
     // 如果是详情页，需要根据 from 参数和 id 生成对应的动态路由路径
     if (route.path.startsWith('/detail/')) {
-      console.log('SidebarMenu - 详情页，使用 activeMenuPath:', activeMenuPath.value)
       return activeMenuPath.value
     }
-    console.log('SidebarMenu - 非详情页，使用 route.path:', route.path)
     return route.path
   })
   
-  // 监听路由变化，更新 activeMenuPath
+  // 更新展开的菜单组
+  const updateOpenedKeys = () => {
+    const currentGroup = getMenuGroupByPath(route.path) || 
+      (route.path.startsWith('/detail/') ? getCurrentGroupFromDetail() : null)
+    
+    if (currentGroup && commonModuleKeys.includes(currentGroup.key)) {
+      if (!openedKeys.value.includes(currentGroup.key)) {
+        openedKeys.value = [currentGroup.key]
+      }
+      return
+    }
+    
+    // 如果是详情页，尝试从查询参数中获取
+    if (route.path.startsWith('/detail/')) {
+      const from = route.query.from
+      if (from && from !== 'popular-science' && from !== 'home') {
+        const allRootTypes = Object.values(menuGroups).map(g => g.key)
+        const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
+        
+        for (const rootType of sortedRootTypes) {
+          if (from.startsWith(rootType + '-') && commonModuleKeys.includes(rootType)) {
+            if (!openedKeys.value.includes(rootType)) {
+              openedKeys.value = [rootType]
+            }
+            return
+          }
+        }
+      }
+    }
+  }
+  
+  // 监听路由变化，更新 activeMenuPath 和展开的菜单组
   watch(() => [route.path, route.query], async ([path, query]) => {
-    console.log('SidebarMenu - 路由变化:', { path, query })
+    // 更新展开的菜单组
+    updateOpenedKeys()
+    
     if (path.startsWith('/detail/')) {
       const from = query.from
-      console.log('SidebarMenu - 详情页，from:', from)
       if (from && from !== 'popular-science' && from !== 'home') {
         // 从 from 中提取 rootType
         const allRootTypes = Object.values(menuGroups).map(g => g.key)
         const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
-        console.log('SidebarMenu - 所有 rootType:', sortedRootTypes)
         
         let matchedRootType = null
         for (const rootType of sortedRootTypes) {
           if (from.startsWith(rootType + '-')) {
             matchedRootType = rootType
-            console.log('SidebarMenu - 匹配到 rootType:', rootType)
             break
           }
         }
@@ -82,17 +168,12 @@ import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
           // 从路径中获取 id
           const pathParts = path.split('/').filter(p => p)
           const id = pathParts[2] // /detail/:type/:id 中的 id
-          console.log('SidebarMenu - 提取的 id:', id)
           
           // 根据 id 查找 pageType
-          console.log('SidebarMenu - 开始查找 pageType')
           const pageType = await getPageTypeById(id)
-          console.log('SidebarMenu - 找到 pageType:', pageType)
           if (pageType) {
             // 根据 id 查找 categoryKey（数据分类的 key，对应菜单项的 defaultId）
-            console.log('SidebarMenu - 开始查找 categoryKey')
             const categoryKey = await getCategoryKeyById(id)
-            console.log('SidebarMenu - 找到 categoryKey:', categoryKey)
             
             // 找到对应的菜单项
             const group = menuGroups[matchedRootType]
@@ -102,80 +183,36 @@ import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
               // 优先通过 categoryKey（对应 defaultId）查找菜单项
               if (categoryKey) {
                 menuItem = group.items.find(item => item.defaultId === categoryKey)
-                console.log('SidebarMenu - 通过 categoryKey 查找菜单项:', menuItem ? menuItem.name : '未找到')
               }
               
               // 如果没找到，回退到使用 pageType 查找（取第一个匹配的）
               if (!menuItem) {
                 menuItem = group.items.find(item => item.pageType === pageType)
-                console.log('SidebarMenu - 通过 pageType 查找菜单项:', menuItem ? menuItem.name : '未找到')
               }
               
               if (menuItem) {
                 // 使用菜单项的 defaultId 来生成路径，这样才能匹配到菜单项
                 const dynamicPath = generateRoutePath(matchedRootType, pageType, menuItem.defaultId)
-                console.log('SidebarMenu - 生成的动态路径（使用 defaultId）:', dynamicPath, 'defaultId:', menuItem.defaultId, 'menuItem:', menuItem.name)
                 activeMenuPath.value = dynamicPath
-                console.log('SidebarMenu - 更新 activeMenuPath 为:', activeMenuPath.value)
-              } else {
-                console.warn('SidebarMenu - 未找到对应的菜单项')
               }
-            } else {
-              console.warn('SidebarMenu - 未找到菜单组')
             }
-          } else {
-            console.warn('SidebarMenu - 未找到 pageType')
           }
-        } else {
-          console.warn('SidebarMenu - 未匹配到 rootType')
         }
       }
     } else {
-      console.log('SidebarMenu - 非详情页，直接使用 path')
       activeMenuPath.value = path
     }
   }, { immediate: true })
   
-  const menuGroup = computed(() => {
-    // 先尝试从路径获取（适用于 /dynamic/... 路径）
-    let group = getMenuGroupByPath(route.path)
-    
-    // 如果是详情页路径，从查询参数 from 中获取 rootType
-    if (!group && route.path.startsWith('/detail/')) {
-      const from = route.query.from
-      if (from) {
-        // from 格式可能是 "rootType-id" 或 "popular-science" 或 "home"
-        if (from === 'popular-science' || from === 'home') {
-          return null // 这些页面没有 sidebar
-        }
-        
-        // 从 from 中提取 rootType
-        // 遍历所有可能的 rootType，找到最长的匹配
-        const allRootTypes = Object.values(menuGroups).map(g => g.key)
-        const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
-        
-        for (const rootType of sortedRootTypes) {
-          if (from.startsWith(rootType + '-')) {
-            group = menuGroups[rootType]
-            if (group) break
-          }
-        }
-      }
-    }
-    
-    return group
-  })
+  // 初始化时更新展开的菜单组
+  updateOpenedKeys()
   
   // 获取菜单项路径
-  const getMenuItemPath = (item) => {
-    const category = menuGroup.value?.key
-    if (!category) {
-      console.log('SidebarMenu - getMenuItemPath: 没有 category')
+  const getMenuItemPath = (rootType, item) => {
+    if (!rootType) {
       return '/'
     }
-    const path = generateRoutePath(category, item.pageType, item.defaultId)
-    console.log('SidebarMenu - getMenuItemPath:', { item: item.name, category, pageType: item.pageType, defaultId: item.defaultId, path })
-    return path
+    return generateRoutePath(rootType, item.pageType, item.defaultId)
   }
   
   // 获取图标组件
@@ -210,11 +247,37 @@ import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
     border-right: none;
   }
   
-  .vertical-menu :deep(.el-menu-item) {
+  /* 父菜单（二级菜单标题）样式 */
+  .vertical-menu :deep(.el-sub-menu) {
+    margin-bottom: 5px;
+  }
+  
+  .vertical-menu :deep(.el-sub-menu__title) {
     height: 50px;
     line-height: 50px;
-    margin-bottom: 5px;
     border-radius: 4px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #303133;
+  }
+  
+  .vertical-menu :deep(.el-sub-menu__title:hover) {
+    background-color: #ecf5ff;
+    color: #409eff;
+  }
+  
+  /* 父菜单展开时的样式 */
+  .vertical-menu :deep(.el-sub-menu.is-opened > .el-sub-menu__title) {
+    color: #409eff;
+  }
+  
+  /* 子菜单项样式 */
+  .vertical-menu :deep(.el-menu-item) {
+    height: 45px;
+    line-height: 45px;
+    padding-left: 50px !important;
+    border-radius: 4px;
+    margin: 2px 0;
   }
   
   .vertical-menu :deep(.el-menu-item:hover) {

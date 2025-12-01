@@ -8,7 +8,42 @@
       </template>
       
       <el-tabs v-model="activeTab" type="card">
-       
+        <!-- 基本信息 -->
+        <el-tab-pane label="基本信息" name="basic">
+          <div class="tab-content">
+            <el-form :model="basicForm" label-width="120px" style="max-width: 800px;">
+              <el-form-item label="版权信息">
+                <el-input v-model="basicForm.copyright" placeholder="请输入版权信息，例如：© 2025 东南大学建筑学院实验教学中心" />
+              </el-form-item>
+              <el-form-item label="ICP备案号">
+                <el-input v-model="basicForm.icp" placeholder="请输入ICP备案号" />
+              </el-form-item>
+              <el-form-item label="Logo">
+                <el-upload
+                  :auto-upload="false"
+                  :on-change="handleLogoChange"
+                  :file-list="logoFileList"
+                  list-type="picture-card"
+                  :limit="1"
+                  accept="image/*"
+                >
+                  <el-icon><Plus /></el-icon>
+                </el-upload>
+                <div class="form-tip">支持上传Logo图片</div>
+                <div v-if="basicForm.logo" class="logo-preview">
+                  <el-image :src="basicForm.logo" style="width: 200px; height: 80px; margin-top: 10px;" fit="contain" />
+                </div>
+              </el-form-item>
+              <el-form-item label="描述">
+                <el-input v-model="basicForm.description" type="textarea" :rows="4" placeholder="请输入描述信息" />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="handleBasicSave">保存</el-button>
+                <el-button @click="handleBasicReset">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+        </el-tab-pane>
 
         <!-- 联系方式 -->
         <el-tab-pane label="联系方式" name="contact">
@@ -23,7 +58,15 @@
               <el-form-item label="电话">
                 <el-input v-model="contactForm.phone" placeholder="请输入联系电话" />
               </el-form-item>
-            
+              <el-form-item label="传真">
+                <el-input v-model="contactForm.fax" placeholder="请输入传真号码" />
+              </el-form-item>
+              <el-form-item label="邮箱">
+                <el-input v-model="contactForm.email" placeholder="请输入邮箱地址" />
+              </el-form-item>
+              <el-form-item label="工作时间">
+                <el-input v-model="contactForm.workTime" placeholder="请输入工作时间，例如：周一至周五 9:00-17:00" />
+              </el-form-item>
               <el-form-item>
                 <el-button type="primary" @click="handleContactSave">保存</el-button>
                 <el-button @click="handleContactReset">重置</el-button>
@@ -101,9 +144,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import * as footerApi from '@/services/footerApi'
 
 // Tab切换
 const activeTab = ref('contact')
@@ -126,9 +170,35 @@ const handleLogoChange = (file) => {
   reader.readAsDataURL(file.raw)
 }
 
-const handleBasicSave = () => {
-  ElMessage.success('保存成功')
-  // 这里应该调用API保存数据
+const handleBasicSave = async () => {
+  try {
+    const result = await footerApi.saveBasic(basicForm)
+    if (result.success) {
+      ElMessage.success(result.message || '保存成功')
+      loadBasic()
+    }
+  } catch (error) {
+    console.error('保存基本信息失败:', error)
+  }
+}
+
+const loadBasic = async () => {
+  try {
+    const result = await footerApi.getBasic()
+    if (result.success && result.data) {
+      Object.assign(basicForm, {
+        copyright: result.data.copyright || '',
+        icp: result.data.icp || '',
+        logo: result.data.logo || '',
+        description: result.data.description || ''
+      })
+      if (result.data.logo) {
+        logoFileList.value = [{ url: result.data.logo }]
+      }
+    }
+  } catch (error) {
+    console.error('加载基本信息失败:', error)
+  }
 }
 
 const handleBasicReset = () => {
@@ -150,9 +220,34 @@ const contactForm = reactive({
   workTime: ''
 })
 
-const handleContactSave = () => {
-  ElMessage.success('保存成功')
-  // 这里应该调用API保存数据
+const handleContactSave = async () => {
+  try {
+    const result = await footerApi.saveContact(contactForm)
+    if (result.success) {
+      ElMessage.success(result.message || '保存成功')
+      loadContact()
+    }
+  } catch (error) {
+    console.error('保存联系方式失败:', error)
+  }
+}
+
+const loadContact = async () => {
+  try {
+    const result = await footerApi.getContact()
+    if (result.success && result.data) {
+      Object.assign(contactForm, {
+        address: result.data.address || '',
+        postcode: result.data.postcode || '',
+        phone: result.data.phone || '',
+        fax: result.data.fax || '',
+        email: result.data.email || '',
+        workTime: result.data.workTime || ''
+      })
+    }
+  } catch (error) {
+    console.error('加载联系方式失败:', error)
+  }
 }
 
 const handleContactReset = () => {
@@ -166,22 +261,7 @@ const handleContactReset = () => {
 }
 
 // ========== 友情链接 ==========
-const linkList = ref([
-  {
-    id: 1,
-    name: '东南大学',
-    url: 'https://www.seu.edu.cn',
-    target: '_blank',
-    sort: 1
-  },
-  {
-    id: 2,
-    name: '建筑学院',
-    url: 'https://arch.seu.edu.cn',
-    target: '_blank',
-    sort: 2
-  }
-])
+const linkList = ref([])
 
 const linkDialogVisible = ref(false)
 const linkDialogTitle = ref('添加链接')
@@ -210,13 +290,13 @@ const handleLinkEdit = (row, index) => {
   linkForm.id = row.id
   linkForm.name = row.name
   linkForm.url = row.url
-  linkForm.target = row.target
-  linkForm.sort = row.sort
+  linkForm.target = row.target || '_blank'
+  linkForm.sort = row.sort || 0
   linkEditIndex.value = index
   linkDialogVisible.value = true
 }
 
-const handleLinkSubmit = () => {
+const handleLinkSubmit = async () => {
   if (!linkForm.name || !linkForm.name.trim()) {
     ElMessage.warning('请输入链接名称')
     return
@@ -231,67 +311,61 @@ const handleLinkSubmit = () => {
     return
   }
   
-  if (linkEditIndex.value >= 0) {
-    linkList.value[linkEditIndex.value] = { ...linkForm }
-    ElMessage.success('编辑成功')
-  } else {
-    linkList.value.push({
-      ...linkForm,
-      id: Date.now()
-    })
-    ElMessage.success('添加成功')
+  try {
+    let result
+    if (linkEditIndex.value >= 0) {
+      // 编辑
+      const linkId = linkList.value[linkEditIndex.value].id
+      result = await footerApi.updateLink(linkId, linkForm)
+    } else {
+      // 添加
+      result = await footerApi.addLink(linkForm)
+    }
+    
+    if (result.success) {
+      ElMessage.success(result.message || '保存成功')
+      linkDialogVisible.value = false
+      loadLinkList()
+    }
+  } catch (error) {
+    console.error('保存链接失败:', error)
   }
-  linkDialogVisible.value = false
 }
 
 const handleLinkDelete = (index) => {
   ElMessageBox.confirm('确定要删除这个链接吗？', '提示', { type: 'warning' })
-    .then(() => {
-      linkList.value.splice(index, 1)
-      ElMessage.success('删除成功')
+    .then(async () => {
+      try {
+        const linkId = linkList.value[index].id
+        const result = await footerApi.deleteLink(linkId)
+        if (result.success) {
+          ElMessage.success(result.message || '删除成功')
+          loadLinkList()
+        }
+      } catch (error) {
+        console.error('删除链接失败:', error)
+      }
     })
     .catch(() => {})
 }
 
-// ========== 社交媒体 ==========
-const socialForm = reactive({
-  wechat: '',
-  wechatQR: '',
-  weibo: '',
-  douyin: '',
-  bilibili: '',
-  linkedin: '',
-  twitter: '',
-  facebook: ''
-})
-
-const wechatQRFileList = ref([])
-
-const handleWechatQRChange = (file) => {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    socialForm.wechatQR = e.target.result
+const loadLinkList = async () => {
+  try {
+    const result = await footerApi.getLinkList()
+    if (result.success && result.data) {
+      linkList.value = result.data
+    }
+  } catch (error) {
+    console.error('加载链接列表失败:', error)
   }
-  reader.readAsDataURL(file.raw)
 }
 
-const handleSocialSave = () => {
-  ElMessage.success('保存成功')
-  // 这里应该调用API保存数据
-}
-
-const handleSocialReset = () => {
-  socialForm.wechat = ''
-  socialForm.wechatQR = ''
-  socialForm.weibo = ''
-  socialForm.douyin = ''
-  socialForm.bilibili = ''
-  socialForm.linkedin = ''
-  socialForm.twitter = ''
-  socialForm.facebook = ''
-  wechatQRFileList.value = []
-  ElMessage.info('已重置')
-}
+// 页面加载时获取数据
+onMounted(() => {
+  loadBasic()
+  loadContact()
+  loadLinkList()
+})
 </script>
 
 <style scoped>
@@ -335,6 +409,10 @@ const handleSocialReset = () => {
   font-size: 12px;
   color: #909399;
   margin-top: 5px;
+}
+
+.logo-preview {
+  margin-top: 10px;
 }
 
 :deep(.el-card__header) {

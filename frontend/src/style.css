@@ -16,3 +16,11 @@ body {
   min-height: 100vh;
 }
 
+/* 控制 tooltip 只显示一个 - 隐藏隐藏状态的 tooltip */
+.el-tooltip__popper[aria-hidden="true"],
+.el-popper.is-tooltip[aria-hidden="true"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+

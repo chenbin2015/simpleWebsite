@@ -13,10 +13,28 @@ export const adminMenuItems = [
     path: '/admin/center-overview'
   },
   {
-    key: 'content',
-    name: '通用模块管理',
+    key: 'experiment-teaching',
+    name: '实验教学',
     icon: 'Grid',
-    path: '/admin/content'
+    path: '/admin/content/experiment-teaching'
+  },
+  {
+    key: 'experiment-resources',
+    name: '实验资源',
+    icon: 'Grid',
+    path: '/admin/content/experiment-resources'
+  },
+  {
+    key: 'construction-results',
+    name: '建设成效',
+    icon: 'Grid',
+    path: '/admin/content/construction-results'
+  },
+  {
+    key: 'safety-management',
+    name: '安全管理',
+    icon: 'Grid',
+    path: '/admin/content/safety-management'
   },
   {
     key: 'popular-science',

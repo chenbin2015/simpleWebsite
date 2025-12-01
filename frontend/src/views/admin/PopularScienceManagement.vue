@@ -30,39 +30,52 @@
               <el-icon><Plus /></el-icon>
             </el-upload>
             
-            <div v-if="bannerList.length > 0" class="banner-list">
-              <div
-                v-for="(banner, index) in bannerList"
-                :key="index"
-                class="banner-item"
-              >
-                <el-card shadow="hover">
-                  <div class="banner-preview-item">
-                    <el-image
-                      :src="banner.url"
-                      style="width: 200px; height: 120px; margin-right: 15px;"
-                      fit="cover"
-                      :preview-src-list="bannerList.map(b => b.url)"
-                    />
-                    <div class="banner-info">
-                      <p><strong>文件名：</strong>{{ banner.name }}</p>
-                      <p><strong>大小：</strong>{{ formatFileSize(banner.size) }}</p>
-                    </div>
-                    <div class="banner-actions">
-                      <el-button
-                        type="danger"
-                        @click="handleBannerDelete(index)"
-                      >
-                        <el-icon><Delete /></el-icon>
-                        删除
-                      </el-button>
-                    </div>
-                  </div>
-                </el-card>
+            <el-empty v-if="bannerFileList.length === 0" description="暂无Banner图，请上传" />
+
+            <!-- 图片裁剪对话框 -->
+            <el-dialog
+              v-model="bannerCropDialogVisible"
+              title="裁剪图片"
+              width="800px"
+              :close-on-click-modal="false"
+              append-to-body
+              z-index="3000"
+            >
+              <div class="crop-container">
+                <vue-picture-cropper
+                  v-if="bannerCropImageSrc"
+                  ref="bannerPictureCropperRef"
+                  :boxStyle="{
+                    width: '100%',
+                    height: '400px',
+                    backgroundColor: '#f8f8f8',
+                    margin: 'auto'
+                  }"
+                  :img="bannerCropImageSrc"
+                  :options="{
+                    viewMode: 1,
+                    dragMode: 'move',
+                    aspectRatio: 16 / 9,
+                    autoCropArea: 0.8,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: false
+                  }"
+                  @ready="onBannerCropReady"
+                  @crop="onBannerCrop"
+                />
               </div>
-            </div>
-            
-            <el-empty v-if="bannerList.length === 0" description="暂无Banner图，请上传" />
+              <template #footer>
+                <span class="dialog-footer">
+                  <el-button @click="cancelBannerCrop">取消</el-button>
+                  <el-button type="primary" @click="confirmBannerCrop">确定</el-button>
+                </span>
+              </template>
+            </el-dialog>
           </div>
         </el-tab-pane>
         
@@ -276,63 +289,6 @@
       </template>
     </el-dialog>
 
-    <!-- 视频编辑对话框 -->
-    <el-dialog v-model="videoDialogVisible" :title="videoDialogTitle" width="600px">
-      <el-form :model="videoForm" label-width="100px">
-        <el-form-item label="标题">
-          <el-input v-model="videoForm.title" placeholder="请输入标题" />
-        </el-form-item>
-        <el-form-item label="封面">
-          <el-upload
-            :auto-upload="false"
-            :on-change="handleVideoCoverChange"
-            :file-list="videoCoverFileList"
-            list-type="picture-card"
-            :limit="1"
-            accept="image/*"
-          >
-            <el-icon><Plus /></el-icon>
-          </el-upload>
-        </el-form-item>
-        <el-form-item label="视频">
-          <el-upload
-            :auto-upload="false"
-            :on-change="handleVideoFileChange"
-            :file-list="videoFileFileList"
-            :limit="1"
-            accept="video/*"
-            list-type="text"
-          >
-            <el-button type="primary">
-              <el-icon><Upload /></el-icon>
-              上传视频
-            </el-button>
-          </el-upload>
-          <el-input
-            v-model="videoForm.videoUrl"
-            placeholder="或输入视频URL"
-            style="margin-top: 10px;"
-          />
-        </el-form-item>
-        <el-form-item label="时长">
-          <el-input v-model="videoForm.duration" placeholder="例如：10:30" />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="videoForm.description" type="textarea" :rows="3" placeholder="请输入视频描述" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="videoForm.status">
-            <el-radio label="draft">草稿</el-radio>
-            <el-radio label="published">已发布</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="videoDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleVideoSubmit">确定</el-button>
-      </template>
-    </el-dialog>
-
     <!-- 轮播图编辑对话框 -->
     <el-dialog
       v-model="carouselDialogVisible"
@@ -433,66 +389,17 @@
       </template>
     </el-dialog>
 
-    <!-- 活动编辑对话框 -->
-    <el-dialog v-model="activityDialogVisible" :title="activityDialogTitle" width="800px">
-      <el-form :model="activityForm" label-width="100px">
-        <el-form-item label="活动标题">
-          <el-input v-model="activityForm.title" placeholder="请输入活动标题" />
-        </el-form-item>
-        <el-form-item label="封面">
-          <el-upload
-            :auto-upload="false"
-            :on-change="handleActivityCoverChange"
-            :file-list="activityCoverFileList"
-            list-type="picture-card"
-            :limit="1"
-            accept="image/*"
-          >
-            <el-icon><Plus /></el-icon>
-          </el-upload>
-        </el-form-item>
-        <el-form-item label="地点">
-          <el-input v-model="activityForm.location" placeholder="请输入活动地点" />
-        </el-form-item>
-        <el-form-item label="开始时间">
-          <el-date-picker
-            v-model="activityForm.startTime"
-            type="datetime"
-            placeholder="选择开始时间"
-            style="width: 100%;"
-          />
-        </el-form-item>
-        <el-form-item label="结束时间">
-          <el-date-picker
-            v-model="activityForm.endTime"
-            type="datetime"
-            placeholder="选择结束时间"
-            style="width: 100%;"
-          />
-        </el-form-item>
-        <el-form-item label="内容">
-          <RichTextEditor v-model="activityForm.content" placeholder="请输入活动内容" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="activityForm.status">
-            <el-radio label="draft">草稿</el-radio>
-            <el-radio label="published">已发布</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="activityDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleActivitySubmit">确定</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Upload, Picture, Delete } from '@element-plus/icons-vue'
+import VuePictureCropper, { cropper } from 'vue-picture-cropper'
 import RichTextEditor from '@/components/RichTextEditor.vue'
+import * as popularScienceApi from '@/services/popularScienceApi'
+import 'cropperjs/dist/cropper.css'
 
 // Tab切换
 const activeTab = ref('banner')
@@ -500,86 +407,181 @@ const activeTab = ref('banner')
 // ========== Banner图管理 ==========
 const bannerUploadRef = ref(null)
 const bannerFileList = ref([])
-const bannerList = ref([])
 
-const handleBannerChange = (file, fileList) => {
-  // 如果已经有图片了，不允许再上传
-  if (bannerList.value.length >= 1 && !bannerList.value.some(b => b.uid === file.uid)) {
-    ElMessage.warning('Banner图只能上传一张，请先删除现有图片')
-    // 移除新添加的文件
-    const index = fileList.findIndex(f => f.uid === file.uid)
-    if (index >= 0) {
-      fileList.splice(index, 1)
-      bannerFileList.value = fileList
+// 裁剪相关
+const bannerCropDialogVisible = ref(false)
+const bannerCropImageSrc = ref('')
+const bannerPendingFile = ref(null)
+const bannerPictureCropperRef = ref(null)
+const bannerCropperReady = ref(false)
+
+// 构建完整的图片URL
+const getBannerImageUrl = (imageUrl) => {
+  if (!imageUrl) return ''
+  // 如果是完整URL或base64，直接返回
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
+    return imageUrl
+  }
+  // 如果是相对路径，需要加上后端基础URL
+  if (imageUrl.startsWith('/')) {
+    return `http://localhost:8080${imageUrl}`
+  }
+  return `http://localhost:8080/${imageUrl}`
+}
+
+// 加载Banner图
+const loadBanner = async () => {
+  try {
+    const response = await popularScienceApi.getBanner()
+    if (response.success && response.data && response.data.imageUrl) {
+      const imageUrl = response.data.imageUrl
+      bannerFileList.value = [{
+        uid: response.data.id || Date.now(),
+        url: getBannerImageUrl(imageUrl),
+        name: 'Banner图'
+      }]
+    } else {
+      bannerFileList.value = []
     }
+  } catch (error) {
+    console.error('加载Banner图失败:', error)
+    ElMessage.error('加载Banner图失败')
+    bannerFileList.value = []
+  }
+}
+
+const handleBannerChange = async (file, fileList) => {
+  // 保存待处理的文件
+  bannerPendingFile.value = file
+  
+  // 读取文件为base64，用于裁剪
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    bannerCropImageSrc.value = e.target.result
+    await nextTick()
+    bannerCropDialogVisible.value = true
+  }
+  
+  reader.onerror = () => {
+    ElMessage.error('读取文件失败')
+    if (bannerUploadRef.value) {
+      bannerUploadRef.value.clearFiles()
+    }
+    bannerPendingFile.value = null
+  }
+  
+  reader.readAsDataURL(file.raw)
+}
+
+// 裁剪器准备就绪
+const onBannerCropReady = () => {
+  bannerCropperReady.value = true
+}
+
+// 裁剪事件
+const onBannerCrop = () => {
+  // 实时裁剪预览（可选）
+}
+
+// 取消裁剪
+const cancelBannerCrop = () => {
+  bannerCropDialogVisible.value = false
+  bannerCropImageSrc.value = ''
+  bannerPendingFile.value = null
+  bannerCropperReady.value = false
+  // 清空上传组件的文件列表
+  if (bannerUploadRef.value) {
+    bannerUploadRef.value.clearFiles()
+  }
+}
+
+// 确认裁剪并上传
+const confirmBannerCrop = async () => {
+  if (!bannerCropperReady.value || !cropper || !bannerPendingFile.value) {
+    ElMessage.error('裁剪器未准备好，请稍候重试')
     return
   }
   
-  // 读取新上传的图片
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    // 检查是否已存在相同的文件
-    const exists = bannerList.value.some(b => b.uid === file.uid)
-    if (!exists) {
-      // 如果已经有图片，先清空
-      if (bannerList.value.length >= 1) {
-        bannerList.value = []
-        bannerFileList.value = []
-      }
+  try {
+    // 获取裁剪后的base64图片
+    const croppedCanvas = cropper.getCroppedCanvas({
+      width: 1920,  // 推荐宽度
+      height: 1080, // 推荐高度（16:9比例）
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high'
+    })
+    
+    if (!croppedCanvas) {
+      ElMessage.error('裁剪失败，请重试')
+      return
+    }
+    
+    const croppedImageUrl = croppedCanvas.toDataURL('image/jpeg', 0.9)
+    
+    // 调用接口上传
+    const response = await popularScienceApi.saveBanner(croppedImageUrl)
+    
+    if (response && response.success) {
+      // 上传成功，更新文件列表
+      const savedImageUrl = response.data?.imageUrl || croppedImageUrl
+      bannerFileList.value = [{
+        uid: response.data?.id || Date.now(),
+        url: getBannerImageUrl(savedImageUrl),
+        name: bannerPendingFile.value.name
+      }]
+      ElMessage.success('Banner图上传成功')
       
-      bannerList.value.push({
-        uid: file.uid,
-        url: e.target.result,
-        name: file.name,
-        size: file.size,
-        raw: file.raw
-      })
-      ElMessage.success(`Banner图 "${file.name}" 上传成功`)
+      // 关闭裁剪对话框
+      bannerCropDialogVisible.value = false
+      bannerCropImageSrc.value = ''
+      bannerPendingFile.value = null
+      bannerCropperReady.value = false
+    } else {
+      throw new Error(response?.message || '上传失败')
+    }
+  } catch (error) {
+    console.error('上传Banner图失败:', error)
+    ElMessage.error('上传Banner图失败: ' + (error.response?.data?.message || error.message || '未知错误'))
+    // 上传失败，恢复之前的文件列表
+    await loadBanner()
+    if (bannerUploadRef.value) {
+      bannerUploadRef.value.clearFiles()
     }
   }
-  reader.readAsDataURL(file.raw)
-  
-  // 更新文件列表
-  bannerFileList.value = fileList
 }
 
 const handleBannerExceed = () => {
   ElMessage.warning('Banner图只能上传一张，请先删除现有图片')
 }
 
-const handleBannerRemove = (file, fileList) => {
-  // 从bannerList中移除
-  const index = bannerList.value.findIndex(b => b.uid === file.uid)
-  if (index >= 0) {
-    bannerList.value.splice(index, 1)
-  }
-  // 更新文件列表
-  bannerFileList.value = fileList
-  ElMessage.success('Banner图已删除')
-}
-
-const handleBannerDelete = (index) => {
-  ElMessageBox.confirm('确定要删除这张Banner图吗？', '提示', {
-    type: 'warning'
-  }).then(() => {
-    const banner = bannerList.value[index]
-    // 从bannerList中移除
-    bannerList.value.splice(index, 1)
-    // 从文件列表中移除
-    const fileIndex = bannerFileList.value.findIndex(f => f.uid === banner.uid)
-    if (fileIndex >= 0) {
-      bannerFileList.value.splice(fileIndex, 1)
+const handleBannerRemove = async () => {
+  try {
+    await ElMessageBox.confirm('确定要删除这张Banner图吗？', '提示', {
+      type: 'warning'
+    })
+    
+    // 执行后端删除操作
+    const response = await popularScienceApi.deleteBanner()
+    if (response.success) {
+      // 删除成功后，清空文件列表
+      bannerFileList.value = []
+      if (bannerUploadRef.value) {
+        bannerUploadRef.value.clearFiles()
+      }
+      ElMessage.success('删除成功')
+    } else {
+      ElMessage.error(response.message || '删除失败')
+      // 删除失败，重新加载
+      await loadBanner()
     }
-    ElMessage.success('删除成功')
-  }).catch(() => {})
-}
-
-const formatFileSize = (bytes) => {
-  if (!bytes) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除Banner图失败:', error)
+      ElMessage.error('删除Banner图失败')
+      // 删除失败，重新加载
+      await loadBanner()
+    }
+  }
 }
 
 // ========== 轮播图管理 ==========
@@ -888,261 +890,10 @@ const handleArticleDelete = (index) => {
     .catch(() => {})
 }
 
-// ========== 科普视频管理 ==========
-const videoList = ref([
-  {
-    id: 1,
-    title: '建筑节能技术科普视频',
-    cover: 'https://via.placeholder.com/400x300?text=视频封面',
-    videoUrl: '/uploads/videos/video1.mp4',
-    duration: '10:30',
-    description: '介绍建筑节能技术的科普视频',
-    publishTime: '2025-01-15 10:00:00',
-    status: 'published'
-  }
-])
-
-const videoPage = ref(1)
-const videoPageSize = ref(10)
-const videoTotal = ref(1)
-
-const videoDialogVisible = ref(false)
-const videoDialogTitle = ref('添加视频')
-const videoForm = reactive({
-  id: null,
-  title: '',
-  cover: '',
-  videoUrl: '',
-  duration: '',
-  description: '',
-  status: 'draft'
+// 组件挂载时加载Banner图
+onMounted(() => {
+  loadBanner()
 })
-const videoCoverFileList = ref([])
-const videoFileFileList = ref([])
-const videoEditIndex = ref(-1)
-
-const handleVideoAdd = () => {
-  videoDialogTitle.value = '添加视频'
-  videoForm.id = null
-  videoForm.title = ''
-  videoForm.cover = ''
-  videoForm.videoUrl = ''
-  videoForm.duration = ''
-  videoForm.description = ''
-  videoForm.status = 'draft'
-  videoCoverFileList.value = []
-  videoFileFileList.value = []
-  videoEditIndex.value = -1
-  videoDialogVisible.value = true
-}
-
-const handleVideoEdit = (row, index) => {
-  videoDialogTitle.value = '编辑视频'
-  videoForm.id = row.id
-  videoForm.title = row.title
-  videoForm.cover = row.cover
-  videoForm.videoUrl = row.videoUrl
-  videoForm.duration = row.duration
-  videoForm.description = row.description || ''
-  videoForm.status = row.status
-  videoCoverFileList.value = row.cover ? [{ url: row.cover }] : []
-  videoFileFileList.value = []
-  videoEditIndex.value = index
-  videoDialogVisible.value = true
-}
-
-const handleVideoCoverChange = (file) => {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    videoForm.cover = e.target.result
-  }
-  reader.readAsDataURL(file.raw)
-}
-
-const handleVideoFileChange = (file) => {
-  const maxSize = 200 * 1024 * 1024
-  if (file.size > maxSize) {
-    ElMessage.warning('视频文件大小不能超过200MB')
-    return false
-  }
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    videoForm.videoUrl = e.target.result
-  }
-  reader.readAsDataURL(file.raw)
-}
-
-const handleVideoSubmit = () => {
-  if (!videoForm.title || !videoForm.title.trim()) {
-    ElMessage.warning('请输入标题')
-    return
-  }
-  if (!videoForm.videoUrl || !videoForm.videoUrl.trim()) {
-    ElMessage.warning('请上传视频或输入视频URL')
-    return
-  }
-  
-  const now = new Date().toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }).replace(/\//g, '-')
-  
-  if (videoEditIndex.value >= 0) {
-    videoList.value[videoEditIndex.value] = {
-      ...videoForm,
-      publishTime: videoList.value[videoEditIndex.value].publishTime
-    }
-    ElMessage.success('编辑成功')
-  } else {
-    videoList.value.push({
-      ...videoForm,
-      id: Date.now(),
-      publishTime: now
-    })
-    videoTotal.value = videoList.value.length
-    ElMessage.success('添加成功')
-  }
-  videoDialogVisible.value = false
-}
-
-const handleVideoDelete = (index) => {
-  ElMessageBox.confirm('确定要删除这个视频吗？', '提示', { type: 'warning' })
-    .then(() => {
-      videoList.value.splice(index, 1)
-      videoTotal.value = videoList.value.length
-      ElMessage.success('删除成功')
-    })
-    .catch(() => {})
-}
-
-// ========== 科普活动管理 ==========
-const activityList = ref([
-  {
-    id: 1,
-    title: '建筑节能科普讲座',
-    cover: 'https://via.placeholder.com/400x300?text=活动封面',
-    location: '学术报告厅',
-    startTime: '2025-02-01 14:00:00',
-    endTime: '2025-02-01 16:00:00',
-    content: '<p>活动内容...</p>',
-    status: 'published'
-  }
-])
-
-const activityPage = ref(1)
-const activityPageSize = ref(10)
-const activityTotal = ref(1)
-
-const activityDialogVisible = ref(false)
-const activityDialogTitle = ref('添加活动')
-const activityForm = reactive({
-  id: null,
-  title: '',
-  cover: '',
-  location: '',
-  startTime: '',
-  endTime: '',
-  content: '',
-  status: 'draft'
-})
-const activityCoverFileList = ref([])
-const activityEditIndex = ref(-1)
-
-const handleActivityAdd = () => {
-  activityDialogTitle.value = '添加活动'
-  activityForm.id = null
-  activityForm.title = ''
-  activityForm.cover = ''
-  activityForm.location = ''
-  activityForm.startTime = ''
-  activityForm.endTime = ''
-  activityForm.content = ''
-  activityForm.status = 'draft'
-  activityCoverFileList.value = []
-  activityEditIndex.value = -1
-  activityDialogVisible.value = true
-}
-
-const handleActivityEdit = (row, index) => {
-  activityDialogTitle.value = '编辑活动'
-  activityForm.id = row.id
-  activityForm.title = row.title
-  activityForm.cover = row.cover
-  activityForm.location = row.location
-  activityForm.startTime = row.startTime
-  activityForm.endTime = row.endTime
-  activityForm.content = row.content || ''
-  activityForm.status = row.status
-  activityCoverFileList.value = row.cover ? [{ url: row.cover }] : []
-  activityEditIndex.value = index
-  activityDialogVisible.value = true
-}
-
-const handleActivityCoverChange = (file) => {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    activityForm.cover = e.target.result
-  }
-  reader.readAsDataURL(file.raw)
-}
-
-const handleActivitySubmit = () => {
-  if (!activityForm.title || !activityForm.title.trim()) {
-    ElMessage.warning('请输入活动标题')
-    return
-  }
-  if (!activityForm.startTime || !activityForm.endTime) {
-    ElMessage.warning('请选择活动时间')
-    return
-  }
-  
-  if (activityEditIndex.value >= 0) {
-    activityList.value[activityEditIndex.value] = { ...activityForm }
-    ElMessage.success('编辑成功')
-  } else {
-    activityList.value.push({
-      ...activityForm,
-      id: Date.now()
-    })
-    activityTotal.value = activityList.value.length
-    ElMessage.success('添加成功')
-  }
-  activityDialogVisible.value = false
-}
-
-const handleActivityDelete = (index) => {
-  ElMessageBox.confirm('确定要删除这个活动吗？', '提示', { type: 'warning' })
-    .then(() => {
-      activityList.value.splice(index, 1)
-      activityTotal.value = activityList.value.length
-      ElMessage.success('删除成功')
-    })
-    .catch(() => {})
-}
-
-const getActivityStatusTag = (activity) => {
-  const now = new Date()
-  const start = new Date(activity.startTime)
-  const end = new Date(activity.endTime)
-  
-  if (now < start) return 'info' // 未开始
-  if (now >= start && now <= end) return 'success' // 进行中
-  return '' // 已结束
-}
-
-const getActivityStatusText = (activity) => {
-  const now = new Date()
-  const start = new Date(activity.startTime)
-  const end = new Date(activity.endTime)
-  
-  if (now < start) return '未开始'
-  if (now >= start && now <= end) return '进行中'
-  return '已结束'
-}
 </script>
 
 <style scoped>
@@ -1242,5 +993,14 @@ const getActivityStatusText = (activity) => {
 :deep(.el-card__header) {
   background-color: #fafafa;
   border-bottom: 1px solid #ebeef5;
+}
+
+.crop-container {
+  width: 100%;
+  margin: 20px 0;
+}
+
+:deep(.cropper-container) {
+  max-width: 100%;
 }
 </style>

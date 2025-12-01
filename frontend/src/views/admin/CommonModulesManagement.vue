@@ -3,351 +3,92 @@
     <el-card shadow="never">
       <template #header>
         <div class="card-header">
-          <h2>通用模块管理</h2>
+          <h2>{{ currentCategoryTitle }} - 通用模块管理</h2>
         </div>
       </template>
       
-      <el-tabs v-model="activeTab" type="card">
-        <!-- 实验教学 -->
-        <el-tab-pane label="实验教学" name="experiment-teaching">
-          <div class="tab-content">
-            <div class="management-layout">
-              <!-- 左侧菜单列表 -->
-              <div class="menu-sidebar">
-                <el-card shadow="hover">
-                  <template #header>
-                    <div class="sidebar-header">
-                      <h3>菜单列表</h3>
-                      <div class="header-actions">
-                        <el-button type="info" size="small" @click="handleOpenBannerDialog('experiment-teaching')">
-                          <el-icon><Picture /></el-icon>
-                          Banner管理
-                        </el-button>
-                        <el-button type="primary" size="small" @click="handleAddMenu('experiment-teaching')">
-                          <el-icon><Plus /></el-icon>
-                          添加菜单
-                        </el-button>
-                      </div>
-                    </div>
-                  </template>
-                  <div class="menu-list">
-                    <div
-                      v-for="menu in menuList.experimentTeaching"
-                      :key="menu.id"
-                      class="menu-item"
-                      :class="{ active: selectedMenu?.id === menu.id }"
-                      @click="handleSelectMenu(menu)"
-                    >
-                      <div class="menu-info">
-                        <el-icon class="menu-icon">
-                          <component :is="getIconComponent(menu.icon)" />
-                        </el-icon>
-                        <div class="menu-details">
-                          <div class="menu-name">{{ menu.name }}</div>
-                          <el-tag size="small" :type="getPageTypeTag(menu.pageType)">
-                            {{ getPageTypeName(menu.pageType) }}
-                          </el-tag>
-                        </div>
-                      </div>
-                      <div class="menu-actions">
-                        <el-button type="primary" size="small" text @click.stop="handleEditMenu(menu)">
-                          编辑
-                        </el-button>
-                        <el-button type="danger" size="small" text @click.stop="handleDeleteMenu(menu)">
-                          删除
-                        </el-button>
-                      </div>
-                    </div>
-                    <el-empty v-if="menuList.experimentTeaching.length === 0" description="暂无菜单" :image-size="80" />
+      <div class="management-layout">
+        <!-- 左侧菜单列表区域 -->
+        <div class="left-panel">
+          <el-card shadow="hover">
+            <template #header>
+              <div class="panel-header">
+                <h3>{{ currentCategoryTitle }} - 菜单列表</h3>
+                <div class="header-actions">
+                  <el-button type="info" size="small" @click="handleOpenBannerDialog(activeCategory)">
+                    <el-icon><Picture /></el-icon>
+                    Banner管理
+                  </el-button>
+                  <el-button type="primary" size="small" @click="handleAddMenu(activeCategory)">
+                    <el-icon><Plus /></el-icon>
+                    添加菜单
+                  </el-button>
+                </div>
+              </div>
+            </template>
+            <div class="menu-list">
+              <div
+                v-for="menu in currentMenuList"
+                :key="menu.id"
+                class="menu-item"
+                :class="{ active: selectedMenu?.id === menu.id }"
+                @click="handleSelectMenu(menu)"
+              >
+                <div class="menu-info">
+                  <el-icon class="menu-icon">
+                    <component :is="getIconComponent(menu.icon)" />
+                  </el-icon>
+                  <div class="menu-details">
+                    <div class="menu-name">{{ menu.name }}</div>
+                    <el-tag size="small" :type="getPageTypeTag(menu.pageType)">
+                      {{ getPageTypeName(menu.pageType) }}
+                    </el-tag>
                   </div>
-                </el-card>
-              </div>
-
-              <!-- 右侧内容管理 -->
-              <div class="content-area">
-                <div v-if="!selectedMenu" class="empty-selection">
-                  <el-empty description="请从左侧选择一个菜单项进行管理" />
                 </div>
-                <div v-else>
-                  <!-- 根据页面类型动态渲染不同的内容管理组件 -->
-                  <NewsListManagement
-                    v-if="selectedMenu.pageType === 'news-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <ProductListManagement
-                    v-else-if="selectedMenu.pageType === 'product-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <ImageTextManagement
-                    v-else-if="selectedMenu.pageType === 'image-text'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <DownloadListManagement
-                    v-else-if="selectedMenu.pageType === 'download-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
+                <div class="menu-actions">
+                  <el-button type="primary" size="small" text @click.stop="handleEditMenu(menu)">
+                    编辑
+                  </el-button>
+                  <el-button type="danger" size="small" text @click.stop="handleDeleteMenu(menu)">
+                    删除
+                  </el-button>
                 </div>
               </div>
+              <el-empty v-if="currentMenuList.length === 0" description="暂无菜单" :image-size="80" />
             </div>
-          </div>
-        </el-tab-pane>
+          </el-card>
+        </div>
 
-        <!-- 实验资源 -->
-        <el-tab-pane label="实验资源" name="experiment-resources">
-          <div class="tab-content">
-            <div class="management-layout">
-              <div class="menu-sidebar">
-                <el-card shadow="hover">
-                  <template #header>
-                    <div class="sidebar-header">
-                      <h3>菜单列表</h3>
-                      <div class="header-actions">
-                        <el-button type="info" size="small" @click="handleOpenBannerDialog('experiment-resources')">
-                          <el-icon><Picture /></el-icon>
-                          Banner管理
-                        </el-button>
-                        <el-button type="primary" size="small" @click="handleAddMenu('experiment-resources')">
-                          <el-icon><Plus /></el-icon>
-                          添加菜单
-                        </el-button>
-                      </div>
-                    </div>
-                  </template>
-                  <div class="menu-list">
-                    <div
-                      v-for="menu in menuList.experimentResources"
-                      :key="menu.id"
-                      class="menu-item"
-                      :class="{ active: selectedMenu?.id === menu.id }"
-                      @click="handleSelectMenu(menu)"
-                    >
-                      <div class="menu-info">
-                        <el-icon class="menu-icon">
-                          <component :is="getIconComponent(menu.icon)" />
-                        </el-icon>
-                        <div class="menu-details">
-                          <div class="menu-name">{{ menu.name }}</div>
-                          <el-tag size="small" :type="getPageTypeTag(menu.pageType)">
-                            {{ getPageTypeName(menu.pageType) }}
-                          </el-tag>
-                        </div>
-                      </div>
-                      <div class="menu-actions">
-                        <el-button type="primary" size="small" text @click.stop="handleEditMenu(menu)">
-                          编辑
-                        </el-button>
-                        <el-button type="danger" size="small" text @click.stop="handleDeleteMenu(menu)">
-                          删除
-                        </el-button>
-                      </div>
-                    </div>
-                    <el-empty v-if="menuList.experimentResources.length === 0" description="暂无菜单" :image-size="80" />
-                  </div>
-                </el-card>
-              </div>
-              <div class="content-area">
-                <div v-if="!selectedMenu" class="empty-selection">
-                  <el-empty description="请从左侧选择一个菜单项进行管理" />
-                </div>
-                <div v-else>
-                  <NewsListManagement
-                    v-if="selectedMenu.pageType === 'news-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <ProductListManagement
-                    v-else-if="selectedMenu.pageType === 'product-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <ImageTextManagement
-                    v-else-if="selectedMenu.pageType === 'image-text'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <DownloadListManagement
-                    v-else-if="selectedMenu.pageType === 'download-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                </div>
-              </div>
-            </div>
+        <!-- 右侧内容管理区域 -->
+        <div class="right-panel">
+          <div v-if="!selectedMenu" class="empty-selection">
+            <el-empty description="请从左侧选择一个菜单项进行管理" />
           </div>
-        </el-tab-pane>
-
-        <!-- 建设成效 -->
-        <el-tab-pane label="建设成效" name="construction-results">
-          <div class="tab-content">
-            <div class="management-layout">
-              <div class="menu-sidebar">
-                <el-card shadow="hover">
-                  <template #header>
-                    <div class="sidebar-header">
-                      <h3>菜单列表</h3>
-                      <div class="header-actions">
-                        <el-button type="info" size="small" @click="handleOpenBannerDialog('construction-results')">
-                          <el-icon><Picture /></el-icon>
-                          Banner管理
-                        </el-button>
-                        <el-button type="primary" size="small" @click="handleAddMenu('construction-results')">
-                          <el-icon><Plus /></el-icon>
-                          添加菜单
-                        </el-button>
-                      </div>
-                    </div>
-                  </template>
-                  <div class="menu-list">
-                    <div
-                      v-for="menu in menuList.constructionResults"
-                      :key="menu.id"
-                      class="menu-item"
-                      :class="{ active: selectedMenu?.id === menu.id }"
-                      @click="handleSelectMenu(menu)"
-                    >
-                      <div class="menu-info">
-                        <el-icon class="menu-icon">
-                          <component :is="getIconComponent(menu.icon)" />
-                        </el-icon>
-                        <div class="menu-details">
-                          <div class="menu-name">{{ menu.name }}</div>
-                          <el-tag size="small" :type="getPageTypeTag(menu.pageType)">
-                            {{ getPageTypeName(menu.pageType) }}
-                          </el-tag>
-                        </div>
-                      </div>
-                      <div class="menu-actions">
-                        <el-button type="primary" size="small" text @click.stop="handleEditMenu(menu)">
-                          编辑
-                        </el-button>
-                        <el-button type="danger" size="small" text @click.stop="handleDeleteMenu(menu)">
-                          删除
-                        </el-button>
-                      </div>
-                    </div>
-                    <el-empty v-if="menuList.constructionResults.length === 0" description="暂无菜单" :image-size="80" />
-                  </div>
-                </el-card>
-              </div>
-              <div class="content-area">
-                <div v-if="!selectedMenu" class="empty-selection">
-                  <el-empty description="请从左侧选择一个菜单项进行管理" />
-                </div>
-                <div v-else>
-                  <NewsListManagement
-                    v-if="selectedMenu.pageType === 'news-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <ProductListManagement
-                    v-else-if="selectedMenu.pageType === 'product-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <ImageTextManagement
-                    v-else-if="selectedMenu.pageType === 'image-text'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <DownloadListManagement
-                    v-else-if="selectedMenu.pageType === 'download-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                </div>
-              </div>
-            </div>
+          <div v-else>
+            <!-- 根据页面类型动态渲染不同的内容管理组件 -->
+            <NewsListManagement
+              v-if="selectedMenu.pageType === 'news-list'"
+              :menu="selectedMenu"
+              @update="handleContentUpdate"
+            />
+            <ProductListManagement
+              v-else-if="selectedMenu.pageType === 'product-list'"
+              :menu="selectedMenu"
+              @update="handleContentUpdate"
+            />
+            <ImageTextManagement
+              v-else-if="selectedMenu.pageType === 'image-text'"
+              :menu="selectedMenu"
+              @update="handleContentUpdate"
+            />
+            <DownloadListManagement
+              v-else-if="selectedMenu.pageType === 'download-list'"
+              :menu="selectedMenu"
+              @update="handleContentUpdate"
+            />
           </div>
-        </el-tab-pane>
-
-        <!-- 安全管理 -->
-        <el-tab-pane label="安全管理" name="safety-management">
-          <div class="tab-content">
-            <div class="management-layout">
-              <div class="menu-sidebar">
-                <el-card shadow="hover">
-                  <template #header>
-                    <div class="sidebar-header">
-                      <h3>菜单列表</h3>
-                      <div class="header-actions">
-                        <el-button type="info" size="small" @click="handleOpenBannerDialog('safety-management')">
-                          <el-icon><Picture /></el-icon>
-                          Banner管理
-                        </el-button>
-                        <el-button type="primary" size="small" @click="handleAddMenu('safety-management')">
-                          <el-icon><Plus /></el-icon>
-                          添加菜单
-                        </el-button>
-                      </div>
-                    </div>
-                  </template>
-                  <div class="menu-list">
-                    <div
-                      v-for="menu in menuList.safetyManagement"
-                      :key="menu.id"
-                      class="menu-item"
-                      :class="{ active: selectedMenu?.id === menu.id }"
-                      @click="handleSelectMenu(menu)"
-                    >
-                      <div class="menu-info">
-                        <el-icon class="menu-icon">
-                          <component :is="getIconComponent(menu.icon)" />
-                        </el-icon>
-                        <div class="menu-details">
-                          <div class="menu-name">{{ menu.name }}</div>
-                          <el-tag size="small" :type="getPageTypeTag(menu.pageType)">
-                            {{ getPageTypeName(menu.pageType) }}
-                          </el-tag>
-                        </div>
-                      </div>
-                      <div class="menu-actions">
-                        <el-button type="primary" size="small" text @click.stop="handleEditMenu(menu)">
-                          编辑
-                        </el-button>
-                        <el-button type="danger" size="small" text @click.stop="handleDeleteMenu(menu)">
-                          删除
-                        </el-button>
-                      </div>
-                    </div>
-                    <el-empty v-if="menuList.safetyManagement.length === 0" description="暂无菜单" :image-size="80" />
-                  </div>
-                </el-card>
-              </div>
-              <div class="content-area">
-                <div v-if="!selectedMenu" class="empty-selection">
-                  <el-empty description="请从左侧选择一个菜单项进行管理" />
-                </div>
-                <div v-else>
-                  <NewsListManagement
-                    v-if="selectedMenu.pageType === 'news-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <ProductListManagement
-                    v-else-if="selectedMenu.pageType === 'product-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <ImageTextManagement
-                    v-else-if="selectedMenu.pageType === 'image-text'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                  <DownloadListManagement
-                    v-else-if="selectedMenu.pageType === 'download-list'"
-                    :menu="selectedMenu"
-                    @update="handleContentUpdate"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
+        </div>
+      </div>
     </el-card>
 
     <!-- Banner管理对话框 -->
@@ -360,6 +101,7 @@
       <BannerManagement
         v-model="currentBannerData"
         @save="handleBannerSave"
+        @delete="handleBannerDelete"
       />
     </el-dialog>
 
@@ -383,15 +125,20 @@
           </el-select>
         </el-form-item>
         <el-form-item label="页面类型">
-          <el-select v-model="menuForm.pageType" placeholder="请选择页面类型" style="width: 100%;">
+          <el-select 
+            v-model="menuForm.pageType" 
+            placeholder="请选择页面类型" 
+            style="width: 100%;"
+            :disabled="isEditMode"
+          >
             <el-option label="新闻列表" value="news-list" />
             <el-option label="产品列表" value="product-list" />
             <el-option label="图文" value="image-text" />
             <el-option label="下载列表" value="download-list" />
           </el-select>
-        </el-form-item>
-        <el-form-item label="内容ID">
-          <el-input v-model="menuForm.contentId" placeholder="请输入内容ID" />
+          <div v-if="isEditMode" style="font-size: 12px; color: #909399; margin-top: 4px;">
+            编辑模式下不允许修改页面类型，以确保数据一致性
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -413,10 +160,50 @@ import ProductListManagement from '@/components/admin/ProductListManagement.vue'
 import ImageTextManagement from '@/components/admin/ImageTextManagement.vue'
 import DownloadListManagement from '@/components/admin/DownloadListManagement.vue'
 import BannerManagement from '@/components/admin/BannerManagement.vue'
+import * as moduleBannerApi from '@/services/moduleBannerApi'
+import * as menuApi from '@/services/menuApi'
 
-// Tab切换
-const activeTab = ref('experiment-teaching')
+// 接收路由参数
+const props = defineProps({
+  category: {
+    type: String,
+    default: 'experiment-teaching'
+  }
+})
+
+// 分类切换
+const activeCategory = ref(props.category)
 const selectedMenu = ref(null)
+
+// 分类名称映射
+const categoryNames = {
+  'experiment-teaching': '实验教学',
+  'experiment-resources': '实验资源',
+  'construction-results': '建设成效',
+  'safety-management': '安全管理'
+}
+
+// 当前分类标题
+const currentCategoryTitle = computed(() => {
+  return categoryNames[activeCategory.value] || '通用模块管理'
+})
+
+// 监听props变化，更新activeCategory
+watch(() => props.category, (newCategory) => {
+  activeCategory.value = newCategory
+  selectedMenu.value = null
+}, { immediate: true })
+
+// 当前菜单列表
+const currentMenuList = computed(() => {
+  const map = {
+    'experiment-teaching': menuList.experimentTeaching,
+    'experiment-resources': menuList.experimentResources,
+    'construction-results': menuList.constructionResults,
+    'safety-management': menuList.safetyManagement
+  }
+  return map[activeCategory.value] || []
+})
 
 // Banner数据管理
 const bannerData = reactive({
@@ -458,7 +245,7 @@ const currentBannerData = ref({
 })
 
 // 打开Banner管理对话框
-const handleOpenBannerDialog = (category) => {
+const handleOpenBannerDialog = async (category) => {
   const categoryNames = {
     'experiment-teaching': '实验教学',
     'experiment-resources': '实验资源',
@@ -468,33 +255,163 @@ const handleOpenBannerDialog = (category) => {
   bannerDialogTitle.value = `${categoryNames[category]} - Banner管理`
   currentBannerCategory.value = category
   
-  // 根据分类获取对应的Banner数据
-  const categoryKeyMap = {
-    'experiment-teaching': 'experimentTeaching',
-    'experiment-resources': 'experimentResources',
-    'construction-results': 'constructionResults',
-    'safety-management': 'safetyManagement'
+  // 构建完整的图片/视频URL
+  const buildFullUrl = (url) => {
+    if (!url) return ''
+    // 如果是完整URL或base64，直接返回
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+      return url
+    }
+    // 如果是相对路径，需要加上后端基础URL
+    if (url.startsWith('/')) {
+      return `http://localhost:8080${url}`
+    }
+    return `http://localhost:8080/${url}`
   }
-  const dataKey = categoryKeyMap[category]
-  currentBannerData.value = { ...bannerData[dataKey] }
+  
+  // 从后端加载Banner数据
+  try {
+    const response = await moduleBannerApi.getBanner(category)
+    if (response.success) {
+      if (response.data) {
+        currentBannerData.value = {
+          type: response.data.type || 'image',
+          imageUrl: buildFullUrl(response.data.imageUrl) || '',
+          videoUrl: buildFullUrl(response.data.videoUrl) || '',
+          videoUrlExternal: response.data.videoUrlExternal || ''
+        }
+      } else {
+        // 没有数据，使用默认值
+        currentBannerData.value = {
+          type: 'image',
+          imageUrl: '',
+          videoUrl: '',
+          videoUrlExternal: ''
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载Banner数据失败:', error)
+    ElMessage.error('加载Banner数据失败')
+    currentBannerData.value = {
+      type: 'image',
+      imageUrl: '',
+      videoUrl: '',
+      videoUrlExternal: ''
+    }
+  }
   
   bannerDialogVisible.value = true
 }
 
 // Banner保存处理
-const handleBannerSave = (data) => {
-  const categoryKeyMap = {
-    'experiment-teaching': 'experimentTeaching',
-    'experiment-resources': 'experimentResources',
-    'construction-results': 'constructionResults',
-    'safety-management': 'safetyManagement'
+const handleBannerSave = async (data) => {
+  if (!currentBannerCategory.value) {
+    ElMessage.error('模块分类不能为空')
+    return
   }
-  const dataKey = categoryKeyMap[currentBannerCategory.value]
-  if (dataKey) {
-    Object.assign(bannerData[dataKey], data)
-    console.log(`保存${currentBannerCategory.value}的Banner数据:`, data)
-    // 这里可以调用API保存数据
-    bannerDialogVisible.value = false
+  
+  try {
+    const response = await moduleBannerApi.saveBanner(currentBannerCategory.value, data)
+    if (response.success) {
+      ElMessage.success('保存成功')
+      // 更新本地数据
+      const categoryKeyMap = {
+        'experiment-teaching': 'experimentTeaching',
+        'experiment-resources': 'experimentResources',
+        'construction-results': 'constructionResults',
+        'safety-management': 'safetyManagement'
+      }
+      const dataKey = categoryKeyMap[currentBannerCategory.value]
+      if (dataKey && response.data) {
+        Object.assign(bannerData[dataKey], {
+          type: response.data.type || data.type,
+          imageUrl: response.data.imageUrl || '',
+          videoUrl: response.data.videoUrl || '',
+          videoUrlExternal: response.data.videoUrlExternal || ''
+        })
+      }
+      bannerDialogVisible.value = false
+    } else {
+      throw new Error(response.message || '保存失败')
+    }
+  } catch (error) {
+    console.error('保存Banner失败:', error)
+    ElMessage.error(error.message || '保存Banner失败')
+  }
+}
+
+// Banner删除处理
+const handleBannerDelete = async ({ type }) => {
+  if (!currentBannerCategory.value) {
+    ElMessage.error('模块分类不能为空')
+    return
+  }
+  
+  try {
+    const response = await moduleBannerApi.deleteBanner(currentBannerCategory.value)
+    if (response.success) {
+      ElMessage.success('删除成功')
+      
+      // 构建完整的图片/视频URL（用于重新加载）
+      const buildFullUrl = (url) => {
+        if (!url) return ''
+        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+          return url
+        }
+        if (url.startsWith('/')) {
+          return `http://localhost:8080${url}`
+        }
+        return `http://localhost:8080/${url}`
+      }
+      
+      // 重新加载Banner数据（更新对话框中的显示）
+      const reloadResponse = await moduleBannerApi.getBanner(currentBannerCategory.value)
+      if (reloadResponse.success) {
+        if (reloadResponse.data) {
+          currentBannerData.value = {
+            type: reloadResponse.data.type || 'image',
+            imageUrl: buildFullUrl(reloadResponse.data.imageUrl) || '',
+            videoUrl: buildFullUrl(reloadResponse.data.videoUrl) || '',
+            videoUrlExternal: reloadResponse.data.videoUrlExternal || ''
+          }
+        } else {
+          // 没有数据，清空显示
+          currentBannerData.value = {
+            type: 'image',
+            imageUrl: '',
+            videoUrl: '',
+            videoUrlExternal: ''
+          }
+        }
+      }
+      
+      // 更新本地数据
+      const categoryKeyMap = {
+        'experiment-teaching': 'experimentTeaching',
+        'experiment-resources': 'experimentResources',
+        'construction-results': 'constructionResults',
+        'safety-management': 'safetyManagement'
+      }
+      const dataKey = categoryKeyMap[currentBannerCategory.value]
+      if (dataKey) {
+        if (reloadResponse.data) {
+          bannerData[dataKey].type = reloadResponse.data.type || 'image'
+          bannerData[dataKey].imageUrl = reloadResponse.data.imageUrl || ''
+          bannerData[dataKey].videoUrl = reloadResponse.data.videoUrl || ''
+          bannerData[dataKey].videoUrlExternal = reloadResponse.data.videoUrlExternal || ''
+        } else {
+          bannerData[dataKey].imageUrl = ''
+          bannerData[dataKey].videoUrl = ''
+          bannerData[dataKey].videoUrlExternal = ''
+        }
+      }
+    } else {
+      throw new Error(response.message || '删除失败')
+    }
+  } catch (error) {
+    console.error('删除Banner失败:', error)
+    ElMessage.error(error.message || '删除Banner失败')
   }
 }
 
@@ -506,51 +423,143 @@ const menuList = reactive({
   safetyManagement: []
 })
 
-// 初始化菜单列表
-const initMenuList = () => {
+// 父菜单ID映射：category -> parentMenuId
+const parentMenuIdMap = reactive({
+  'experiment-teaching': null,
+  'experiment-resources': null,
+  'construction-results': null,
+  'safety-management': null
+})
+
+// 从后端加载菜单数据，完全基于后端返回的数据构建菜单列表
+const loadMenusFromBackend = async () => {
+  try {
+    const response = await menuApi.getAllMenus()
+    if (response.success && response.data) {
+      // 分类名称到数据库父菜单名称的映射
+      const categoryToParentName = {
+        'experiment-teaching': '实验教学',
+        'experiment-resources': '实验资源',
+        'construction-results': '建设成效',
+        'safety-management': '安全管理'
+      }
+      
+      // 初始化所有分类的菜单列表为空
+      menuList.experimentTeaching = []
+      menuList.experimentResources = []
+      menuList.constructionResults = []
+      menuList.safetyManagement = []
+      
+      // 从后端数据构建菜单列表
+      response.data.forEach(parentMenu => {
+        // 找到对应的分类
+        const category = Object.keys(categoryToParentName).find(
+          cat => categoryToParentName[cat] === parentMenu.name
+        )
+        
+        if (category) {
+          // 保存父菜单ID映射
+          parentMenuIdMap[category] = parentMenu.id
+          
+          // 从后端返回的子菜单数据构建菜单列表
+          if (parentMenu.children && parentMenu.children.length > 0) {
+            const categoryMenuList = parentMenu.children.map((childMenu, index) => {
+              // 尝试从配置中找到对应的菜单项以获取图标和页面类型
+              const configItem = menuGroups[category]?.items?.find(
+                item => item.name === childMenu.name
+              )
+              
+              return {
+                id: `${category}-${index + 1}`, // 前端ID用于显示
+                menuId: childMenu.id, // 数据库ID，用于API调用
+                category: category,
+                key: configItem?.key || `menu-${childMenu.id}`, // 从配置获取key，如果没有则生成
+                name: childMenu.name,
+                icon: configItem?.icon || 'Document', // 从配置获取图标，如果没有则使用默认
+                pageType: childMenu.pageType || configItem?.pageType || 'news-list' // 优先使用数据库中的页面类型，如果没有则使用配置中的，最后使用默认值
+              }
+            })
+            
+            // 根据分类设置对应的菜单列表
+            switch (category) {
+              case 'experiment-teaching':
+                menuList.experimentTeaching = categoryMenuList
+                break
+              case 'experiment-resources':
+                menuList.experimentResources = categoryMenuList
+                break
+              case 'construction-results':
+                menuList.constructionResults = categoryMenuList
+                break
+              case 'safety-management':
+                menuList.safetyManagement = categoryMenuList
+                break
+            }
+          }
+        }
+      })
+    } else {
+      // 如果后端加载失败，使用前端配置
+      initMenuListFromConfig()
+    }
+  } catch (error) {
+    console.error('加载菜单数据失败，使用前端配置:', error)
+    // 如果后端加载失败，使用前端配置
+    initMenuListFromConfig()
+  }
+}
+
+// 从配置初始化菜单列表（作为fallback）
+const initMenuListFromConfig = () => {
   // 实验教学
   menuList.experimentTeaching = (menuGroups['experiment-teaching']?.items || []).map((item, index) => ({
     id: `experiment-teaching-${index + 1}`,
+    menuId: null,
     category: 'experiment-teaching',
     key: item.key,
     name: item.name,
     icon: item.icon,
-    pageType: item.pageType,
-    contentId: item.defaultId
+    pageType: item.pageType
   }))
 
   // 实验资源
   menuList.experimentResources = (menuGroups['experiment-resources']?.items || []).map((item, index) => ({
     id: `experiment-resources-${index + 1}`,
+    menuId: null,
     category: 'experiment-resources',
     key: item.key,
     name: item.name,
     icon: item.icon,
-    pageType: item.pageType,
-    contentId: item.defaultId
+    pageType: item.pageType
   }))
 
   // 建设成效
   menuList.constructionResults = (menuGroups['construction-results']?.items || []).map((item, index) => ({
     id: `construction-results-${index + 1}`,
+    menuId: null,
     category: 'construction-results',
     key: item.key,
     name: item.name,
     icon: item.icon,
-    pageType: item.pageType,
-    contentId: item.defaultId
+    pageType: item.pageType
   }))
 
   // 安全管理
   menuList.safetyManagement = (menuGroups['safety-management']?.items || []).map((item, index) => ({
     id: `safety-management-${index + 1}`,
+    menuId: null,
     category: 'safety-management',
     key: item.key,
     name: item.name,
     icon: item.icon,
-    pageType: item.pageType,
-    contentId: item.defaultId
+    pageType: item.pageType
   }))
+}
+
+// 初始化菜单列表（兼容旧代码）
+const initMenuList = () => {
+  // 优先从后端加载，如果失败则使用前端配置
+  loadMenusFromBackend()
 }
 
 // 菜单编辑对话框
@@ -562,10 +571,12 @@ const menuForm = reactive({
   key: '',
   name: '',
   icon: 'Document',
-  pageType: 'news-list',
-  contentId: ''
+  pageType: 'news-list'
 })
 const menuEditIndex = ref(-1)
+
+// 判断是否是编辑模式
+const isEditMode = computed(() => menuEditIndex.value >= 0)
 
 // 可用图标列表
 const availableIcons = [
@@ -623,7 +634,6 @@ const handleAddMenu = (category) => {
   menuForm.name = ''
   menuForm.icon = 'Document'
   menuForm.pageType = 'news-list'
-  menuForm.contentId = ''
   menuEditIndex.value = -1
   menuDialogVisible.value = true
 }
@@ -637,7 +647,6 @@ const handleEditMenu = (menu) => {
   menuForm.name = menu.name
   menuForm.icon = menu.icon
   menuForm.pageType = menu.pageType
-  menuForm.contentId = menu.contentId
   
   // 找到菜单在列表中的索引
   const list = getMenuListByCategory(menu.category)
@@ -649,15 +658,38 @@ const handleEditMenu = (menu) => {
 const handleDeleteMenu = (menu) => {
   ElMessageBox.confirm('确定要删除这个菜单吗？删除后关联的内容也会被删除。', '提示', {
     type: 'warning'
-  }).then(() => {
-    const list = getMenuListByCategory(menu.category)
-    const index = list.findIndex(m => m.id === menu.id)
-    if (index >= 0) {
-      list.splice(index, 1)
-      if (selectedMenu.value?.id === menu.id) {
-        selectedMenu.value = null
+  }).then(async () => {
+    try {
+      // 如果有数据库ID，调用后端API删除
+      if (menu.menuId) {
+        const response = await menuApi.deleteMenu(menu.menuId)
+        
+        if (!response.success) {
+          throw new Error(response.message || '删除失败')
+        }
+        
+        ElMessage.success('删除成功')
+        // 清除选中的菜单
+        if (selectedMenu.value?.id === menu.id) {
+          selectedMenu.value = null
+        }
+        // 重新加载菜单列表以获取最新数据（已删除的菜单不会显示）
+        await loadMenusFromBackend()
+      } else {
+        // 如果没有数据库ID，只从前端列表中移除
+        const list = getMenuListByCategory(menu.category)
+        const index = list.findIndex(m => m.id === menu.id)
+        if (index >= 0) {
+          list.splice(index, 1)
+          if (selectedMenu.value?.id === menu.id) {
+            selectedMenu.value = null
+          }
+          ElMessage.success('删除成功')
+        }
       }
-      ElMessage.success('删除成功')
+    } catch (error) {
+      console.error('删除菜单失败:', error)
+      ElMessage.error(error.message || '删除菜单失败')
     }
   }).catch(() => {})
 }
@@ -674,48 +706,70 @@ const getMenuListByCategory = (category) => {
 }
 
 // 提交菜单
-const handleMenuSubmit = () => {
+const handleMenuSubmit = async () => {
   if (!menuForm.name || !menuForm.name.trim()) {
     ElMessage.warning('请输入菜单名称')
-    return
-  }
-  if (!menuForm.contentId || !menuForm.contentId.trim()) {
-    ElMessage.warning('请输入内容ID')
     return
   }
 
   const list = getMenuListByCategory(menuForm.category)
   
-  if (menuEditIndex.value >= 0) {
-    // 编辑
-    const menu = list[menuEditIndex.value]
-    Object.assign(menu, {
-      key: menuForm.key || menu.key,
-      name: menuForm.name,
-      icon: menuForm.icon,
-      pageType: menuForm.pageType,
-      contentId: menuForm.contentId
-    })
-    // 如果页面类型改变，需要更新选中的菜单
-    if (selectedMenu.value?.id === menu.id) {
-      selectedMenu.value = { ...menu }
+  try {
+    if (menuEditIndex.value >= 0) {
+      // 编辑
+      const menu = list[menuEditIndex.value]
+      
+      if (!menu.menuId) {
+        ElMessage.error('菜单缺少数据库ID，无法更新')
+        return
+      }
+      
+      // 调用后端API更新菜单
+      const response = await menuApi.updateMenu(menu.menuId, menuForm.name, null, null)
+      
+      if (response.success) {
+        ElMessage.success('编辑成功')
+        menuDialogVisible.value = false
+        // 重新加载菜单列表以获取最新数据
+        await loadMenusFromBackend()
+        // 更新选中的菜单（如果有的话）
+        if (selectedMenu.value?.menuId === menu.menuId) {
+          const updatedMenu = getMenuListByCategory(menuForm.category).find(m => m.menuId === menu.menuId)
+          if (updatedMenu) {
+            selectedMenu.value = { ...updatedMenu }
+          }
+        }
+      } else {
+        throw new Error(response.message || '更新失败')
+      }
+    } else {
+      // 添加
+      const parentId = parentMenuIdMap[menuForm.category]
+      
+      if (!parentId) {
+        ElMessage.error('无法找到父菜单ID，请刷新页面重试')
+        return
+      }
+      
+      // 计算排序顺序（新菜单放在最后）
+      const sortOrder = list.length
+      
+      // 调用后端API创建子菜单
+      const response = await menuApi.createSubMenu(parentId, menuForm.name, sortOrder, menuForm.pageType)
+      
+      if (response.success && response.menu) {
+        ElMessage.success('添加成功')
+        menuDialogVisible.value = false
+        // 重新加载菜单列表以获取最新数据
+        await loadMenusFromBackend()
+      } else {
+        throw new Error(response.message || '添加失败')
+      }
     }
-    ElMessage.success('编辑成功')
-  } else {
-    // 添加
-    const newMenu = {
-      id: `${menuForm.category}-${Date.now()}`,
-      category: menuForm.category,
-      key: menuForm.key || `menu-${Date.now()}`,
-      name: menuForm.name,
-      icon: menuForm.icon,
-      pageType: menuForm.pageType,
-      contentId: menuForm.contentId
-    }
-    list.push(newMenu)
-    ElMessage.success('添加成功')
+  } catch (error) {
+    console.error('保存菜单失败:', error)
+    ElMessage.error(error.message || '保存菜单失败')
   }
-  menuDialogVisible.value = false
 }
 
 // 内容更新回调
@@ -724,8 +778,8 @@ const handleContentUpdate = () => {
   console.log('内容已更新')
 }
 
-// 切换Tab时重置选中菜单
-watch(activeTab, () => {
+// 切换分类时重置选中菜单
+watch(activeCategory, () => {
   selectedMenu.value = null
 })
 
@@ -753,36 +807,34 @@ initMenuList()
   color: #303133;
 }
 
-.tab-content {
-  padding: 20px 0;
-}
-
 .management-layout {
   display: flex;
   gap: 20px;
   min-height: 600px;
 }
 
-.menu-sidebar {
-  width: 320px;
+.left-panel {
+  width: 280px;
   flex-shrink: 0;
 }
 
-.sidebar-header {
+.panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
 }
 
 .header-actions {
   display: flex;
   gap: 8px;
-}
-
-.sidebar-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: bold;
 }
 
 .menu-list {
@@ -838,9 +890,10 @@ initMenuList()
   gap: 5px;
 }
 
-.content-area {
+.right-panel {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .empty-selection {

@@ -92,8 +92,8 @@ export default {
         }
         
         result.push({
-          name: menuName,
-          path: this.menuRouteMap[menuName] || '',
+            name: menuName,
+            path: this.menuRouteMap[menuName] || '',
           rootType: rootType,
           children: children
         })

@@ -28,24 +28,62 @@ const props = defineProps({
 
 const route = useRoute()
 
-// 检查是否有菜单数据
+// 定义通用模块的 key 列表
+const commonModuleKeys = [
+  'experiment-teaching',    // 实验教学
+  'experiment-resources',   // 实验资源
+  'construction-results',   // 建设成效
+  'safety-management'       // 安全管理
+]
+
+// 检查是否是通用模块页面
+const isCommonModulePage = computed(() => {
+  if (!props.showSidebar) return false
+  
+  // 检查是否是通用模块的动态路由路径
+  const pathParts = route.path.split('/').filter(Boolean)
+  if (pathParts.length >= 2 && pathParts[0] === 'dynamic') {
+    const rootType = pathParts[1]
+    return commonModuleKeys.includes(rootType)
+  }
+  
+  // 检查是否是详情页，且 from 参数指向通用模块
+  if (route.path.startsWith('/detail/')) {
+    const from = route.query.from
+    if (from && from !== 'popular-science' && from !== 'home') {
+      const allRootTypes = Object.values(menuGroups).map(g => g.key)
+      const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
+      
+      for (const rootType of sortedRootTypes) {
+        if (from.startsWith(rootType + '-') && commonModuleKeys.includes(rootType)) {
+          return true
+        }
+      }
+    }
+  }
+  
+  return false
+})
+
+// 检查是否有菜单数据（现在始终显示通用模块的所有菜单）
 const hasMenuData = computed(() => {
   if (!props.showSidebar) return false
   
-  // 先尝试从路径获取（适用于 /dynamic/... 路径）
+  // 如果是通用模块页面，始终显示侧边栏
+  if (isCommonModulePage.value) {
+    return true
+  }
+  
+  // 对于其他页面，保持原有逻辑（如中心概况等可能有单独的菜单）
   let group = getMenuGroupByPath(route.path)
   
-  // 如果是详情页路径，从查询参数 from 中获取 rootType
   if (!group && route.path.startsWith('/detail/')) {
     const from = route.query.from
     if (from) {
-      // from 格式可能是 "rootType-id" 或 "popular-science" 或 "home"
       if (from === 'popular-science' || from === 'home') {
-        return false // 这些页面没有 sidebar
+        return false
       }
       
-      // 从 from 中提取 rootType
-      // 遍历所有可能的 rootType，找到最长的匹配
       const allRootTypes = Object.values(menuGroups).map(g => g.key)
       const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
       
@@ -58,7 +96,6 @@ const hasMenuData = computed(() => {
     }
   }
   
-  // 检查菜单组是否有数据
   return group && group.items && group.items.length > 0
 })
 

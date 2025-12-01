@@ -29,11 +29,20 @@ public class Menu {
     @Column(name = "is_active")
     private Boolean isActive = true;
     
+    @Column(name = "page_type", length = 50)
+    private String pageType;
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    @Column(name = "deleted")
+    private Boolean deleted = false;
+    
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
     
     @OneToOne(mappedBy = "menu", cascade = CascadeType.ALL, orphanRemoval = true)
     private Content content;
@@ -42,6 +51,9 @@ public class Menu {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (deleted == null) {
+            deleted = false;
+        }
     }
     
     @PreUpdate
@@ -105,6 +117,14 @@ public class Menu {
         this.isActive = isActive;
     }
     
+    public String getPageType() {
+        return pageType;
+    }
+    
+    public void setPageType(String pageType) {
+        this.pageType = pageType;
+    }
+    
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -119,6 +139,22 @@ public class Menu {
     
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    public Boolean getDeleted() {
+        return deleted;
+    }
+    
+    public void setDeleted(Boolean deleted) {
+        this.deleted = deleted;
+    }
+    
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+    
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
     
     public Content getContent() {
