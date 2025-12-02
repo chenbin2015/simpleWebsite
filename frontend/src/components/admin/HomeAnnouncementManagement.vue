@@ -11,7 +11,6 @@
     <el-table :data="announcementList" border style="width: 100%" v-loading="announcementLoading">
       <el-table-column type="index" label="序号" width="60" />
       <el-table-column prop="title" label="标题" />
-      <el-table-column prop="content" label="内容" show-overflow-tooltip />
       <el-table-column prop="publishTime" label="发布时间" width="180" />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
@@ -57,10 +56,10 @@
       :close-on-click-modal="false"
     >
       <el-form :model="announcementForm" label-width="100px">
-        <el-form-item label="标题">
-          <el-input v-model="announcementForm.title" placeholder="请输入标题" />
+        <el-form-item label="标题" required>
+          <el-input v-model="announcementForm.title" placeholder="请输入标题" maxlength="50" show-word-limit />
         </el-form-item>
-        <el-form-item label="内容">
+        <el-form-item label="内容" required>
           <RichTextEditor
             v-model="announcementForm.content"
             placeholder="请输入公告内容，支持插入图片和视频"

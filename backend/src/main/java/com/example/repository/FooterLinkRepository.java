@@ -9,7 +9,9 @@ import java.util.List;
 
 @Repository
 public interface FooterLinkRepository extends JpaRepository<FooterLink, Long> {
-    @Query("SELECT l FROM FooterLink l ORDER BY l.sort ASC, l.createdAt DESC")
+    @Query("SELECT l FROM FooterLink l WHERE l.deleted = false ORDER BY l.sort ASC, l.createdAt DESC")
     List<FooterLink> findAllOrderBySort();
+    
+    FooterLink findByIdAndDeletedFalse(Long id);
 }
 

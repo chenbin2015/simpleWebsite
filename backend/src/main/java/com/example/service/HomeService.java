@@ -575,14 +575,20 @@ public class HomeService {
      * 添加公告
      */
     @Transactional
-    public Map<String, Object> addAnnouncement(Map<String, Object> data) {
+    public Map<String, Object> addAnnouncement(Map<String, Object> data) throws IOException {
         Map<String, Object> result = new HashMap<>();
         
         String title = (String) data.get("title");
         String content = (String) data.get("content");
         String status = data.get("status") != null ? (String) data.get("status") : "draft";
         
-        HomeAnnouncement announcement = new HomeAnnouncement(title, content, status);
+        // 处理内容中的Base64图片，转换为文件
+        String processedContent = content;
+        if (content != null && !content.isEmpty()) {
+            processedContent = FileUploadUtil.processHtmlImages(content);
+        }
+        
+        HomeAnnouncement announcement = new HomeAnnouncement(title, processedContent, status);
         announcement = announcementRepository.save(announcement);
         
         Map<String, Object> announcementData = new HashMap<>();
@@ -604,7 +610,7 @@ public class HomeService {
      * 更新公告
      */
     @Transactional
-    public Map<String, Object> updateAnnouncement(Long id, Map<String, Object> data) {
+    public Map<String, Object> updateAnnouncement(Long id, Map<String, Object> data) throws IOException {
         Map<String, Object> result = new HashMap<>();
         
         HomeAnnouncement announcement = announcementRepository.findById(id).orElse(null);
@@ -618,7 +624,12 @@ public class HomeService {
             announcement.setTitle((String) data.get("title"));
         }
         if (data.containsKey("content")) {
-            announcement.setContent((String) data.get("content"));
+            String content = (String) data.get("content");
+            // 处理内容中的Base64图片，转换为文件
+            if (content != null && !content.isEmpty()) {
+                content = FileUploadUtil.processHtmlImages(content);
+            }
+            announcement.setContent(content);
         }
         if (data.containsKey("status")) {
             announcement.setStatus((String) data.get("status"));

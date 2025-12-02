@@ -10,7 +10,7 @@
       <el-form-item label="标题">
         <el-input :model-value="menu.name" disabled placeholder="标题与菜单名称一致，不可编辑" />
       </el-form-item>
-      <el-form-item label="内容">
+      <el-form-item label="内容" required>
         <RichTextEditor v-model="formData.html" placeholder="请输入图文内容，支持插入图片和视频" />
       </el-form-item>
       <el-form-item>

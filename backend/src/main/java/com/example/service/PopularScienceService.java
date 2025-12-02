@@ -231,6 +231,13 @@ public class PopularScienceService {
                 String link = item.get("link") != null ? (String) item.get("link") : "";
                 Integer sort = item.get("sort") != null ? ((Number) item.get("sort")).intValue() : 0;
                 
+                // 校验标题
+                if (title == null || title.trim().isEmpty()) {
+                    result.put("success", false);
+                    result.put("message", "标题不能为空");
+                    return result;
+                }
+                
                 // 处理图片：如果是Base64，转换为文件保存
                 String finalImageUrl = null;
                 if (image != null && !image.trim().isEmpty()) {
@@ -249,7 +256,7 @@ public class PopularScienceService {
                     return result;
                 }
                 
-                PopularScienceCarousel carousel = new PopularScienceCarousel(finalImageUrl, title, link, sort);
+                PopularScienceCarousel carousel = new PopularScienceCarousel(finalImageUrl, title.trim(), link, sort);
                 carouselRepository.save(carousel);
             }
             

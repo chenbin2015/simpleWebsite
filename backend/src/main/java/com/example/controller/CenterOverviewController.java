@@ -37,8 +37,16 @@ public class CenterOverviewController {
             @RequestParam(value = "image", required = false) MultipartFile imageFile,
             @RequestParam(value = "imageUrl", required = false) String imageUrl,
             @RequestParam(value = "video", required = false) MultipartFile videoFile,
+            @RequestParam(value = "videoUrl", required = false) String videoUrl,
             @RequestParam(value = "videoUrlExternal", required = false) String videoUrlExternal) {
         try {
+            // 如果提供了 videoUrl，但没有 videoFile，说明是保留原有的视频URL
+            if (videoUrl != null && !videoUrl.trim().isEmpty() && (videoFile == null || videoFile.isEmpty())) {
+                // 将 videoUrl 作为 videoUrlExternal 传递（如果 videoUrlExternal 为空）
+                if (videoUrlExternal == null || videoUrlExternal.trim().isEmpty()) {
+                    videoUrlExternal = videoUrl.trim();
+                }
+            }
             return centerOverviewService.saveBanner(type, imageFile, imageUrl, videoFile, videoUrlExternal);
         } catch (IOException e) {
             Map<String, Object> result = new HashMap<>();

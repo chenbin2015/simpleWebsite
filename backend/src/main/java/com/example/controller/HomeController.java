@@ -192,7 +192,14 @@ public class HomeController {
      */
     @PostMapping("/announcement")
     public Map<String, Object> addAnnouncement(@RequestBody Map<String, Object> request) {
-        return homeService.addAnnouncement(request);
+        try {
+            return homeService.addAnnouncement(request);
+        } catch (IOException e) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", "文件保存失败: " + e.getMessage());
+            return result;
+        }
     }
     
     /**
@@ -200,7 +207,14 @@ public class HomeController {
      */
     @PutMapping("/announcement/{id}")
     public Map<String, Object> updateAnnouncement(@PathVariable Long id, @RequestBody Map<String, Object> request) {
-        return homeService.updateAnnouncement(id, request);
+        try {
+            return homeService.updateAnnouncement(id, request);
+        } catch (IOException e) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", "文件保存失败: " + e.getMessage());
+            return result;
+        }
     }
     
     /**

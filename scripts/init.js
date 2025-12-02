@@ -64,6 +64,10 @@ async function initDatabase() {
     console.log('\n正在创建管理员用户...');
     await createAdminUser(connection);
     
+    // 初始化系统配置
+    console.log('\n正在初始化系统配置...');
+    await initSystemConfig(connection);
+    
   } catch (error) {
     console.error('❌ 数据库初始化失败:', error.message);
     if (error.code === 'ER_ACCESS_DENIED_ERROR') {
@@ -131,6 +135,48 @@ async function createAdminUser(connection) {
   } catch (error) {
     console.error('❌ 创建管理员用户失败:', error.message);
     console.error('提示: 请手动创建管理员用户');
+    throw error;
+  }
+}
+
+// 初始化系统配置
+async function initSystemConfig(connection) {
+  try {
+    const baseUrl = 'http://localhost:8080';
+    
+    // 检查配置是否已存在
+    const [existingConfigs] = await connection.query(
+      'SELECT id FROM system_config WHERE config_key = ?',
+      ['base_url']
+    );
+    
+    if (existingConfigs.length > 0) {
+      // 配置已存在，更新
+      console.log('ℹ️  系统配置已存在，正在更新...');
+      await connection.query(
+        'UPDATE system_config SET config_value = ?, updated_at = NOW() WHERE config_key = ?',
+        [baseUrl, 'base_url']
+      );
+      console.log('✅ 系统配置已更新！');
+    } else {
+      // 配置不存在，创建
+      await connection.query(
+        `INSERT INTO system_config (config_key, config_value, description, created_at, updated_at)
+         VALUES (?, ?, ?, NOW(), NOW())`,
+        ['base_url', baseUrl, '系统基础URL，用于拼接文件访问的完整地址']
+      );
+      console.log('✅ 系统配置创建成功！');
+    }
+    
+    console.log(`\n📝 系统配置信息:`);
+    console.log(`  配置键: base_url`);
+    console.log(`  配置值: ${baseUrl}`);
+    console.log(`  说明: 系统基础URL，用于拼接文件访问的完整地址`);
+    console.log(`\n✅ 可以通过修改数据库中的 system_config 表来更改基础URL`);
+    
+  } catch (error) {
+    console.error('❌ 初始化系统配置失败:', error.message);
+    console.error('提示: 请手动插入系统配置');
     throw error;
   }
 }

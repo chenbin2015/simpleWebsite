@@ -64,15 +64,29 @@ public class CenterOverviewService {
                                           MultipartFile videoFile, String videoUrlExternal) throws IOException {
         Map<String, Object> result = new HashMap<>();
         
-        // Banner只有一条记录（单例模式），先逻辑删除旧的未删除记录
+        // Banner只有一条记录（单例模式），先查找是否存在未删除的记录
         List<CenterOverviewBanner> oldBanners = bannerRepository.findAllNotDeleted();
-        for (CenterOverviewBanner oldBanner : oldBanners) {
-            oldBanner.setDeleted(true);
-            oldBanner.setDeletedAt(LocalDateTime.now());
-            bannerRepository.save(oldBanner);
+        CenterOverviewBanner banner;
+        
+        if (!oldBanners.isEmpty()) {
+            // 如果存在，逻辑删除旧的记录
+            for (CenterOverviewBanner oldBanner : oldBanners) {
+                oldBanner.setDeleted(true);
+                oldBanner.setDeletedAt(LocalDateTime.now());
+                bannerRepository.save(oldBanner);
+            }
+            // 创建新记录，但保留原有数据（如果新数据为空）
+            CenterOverviewBanner lastBanner = oldBanners.get(0);
+            banner = new CenterOverviewBanner();
+            // 保留原有的图片和视频数据
+            banner.setImageUrl(lastBanner.getImageUrl());
+            banner.setVideoUrl(lastBanner.getVideoUrl());
+            banner.setVideoUrlExternal(lastBanner.getVideoUrlExternal());
+        } else {
+            // 如果不存在，创建新记录
+            banner = new CenterOverviewBanner();
         }
         
-        CenterOverviewBanner banner = new CenterOverviewBanner();
         banner.setType(type);
         
         if ("image".equals(type)) {
@@ -92,16 +106,21 @@ public class CenterOverviewService {
                 }
             }
             
+            // 如果有新图片，更新；否则保留原有图片
             if (finalImageUrl != null) {
                 banner.setImageUrl(finalImageUrl);
             }
         } else if ("video".equals(type)) {
+            // 如果有新视频，更新；否则保留原有视频
             if (videoFile != null && !videoFile.isEmpty()) {
                 String videoUrl = FileUploadUtil.saveFile(videoFile);
                 banner.setVideoUrl(videoUrl);
+                banner.setVideoUrlExternal(null); // 上传文件时清空外部URL
             } else if (videoUrlExternal != null && !videoUrlExternal.trim().isEmpty()) {
                 banner.setVideoUrlExternal(videoUrlExternal.trim());
+                banner.setVideoUrl(null); // 设置外部URL时清空上传的视频
             }
+            // 如果既没有新文件也没有新外部URL，保留原有数据
         }
         
         banner = bannerRepository.save(banner);

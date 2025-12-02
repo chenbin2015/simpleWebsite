@@ -241,22 +241,9 @@ watch(bannerForm, (newVal) => {
 }, { deep: true })
 
 const handleBannerTypeChange = () => {
-  // 切换类型时清空之前的内容
-  if (bannerForm.type === 'image') {
-    bannerForm.videoUrl = ''
-    bannerForm.videoUrlExternal = ''
-    bannerVideoFileList.value = []
-    bannerExternalVideoUrl.value = ''
-    if (bannerVideoUploadRef.value) {
-      bannerVideoUploadRef.value.clearFiles()
-    }
-  } else {
-    bannerForm.imageUrl = ''
-    bannerImageFileList.value = []
-    if (bannerImageUploadRef.value) {
-      bannerImageUploadRef.value.clearFiles()
-    }
-  }
+  // 切换类型时不清空数据，只切换显示
+  // 数据保留在 bannerForm 中，根据 type 显示不同的内容
+  // 只有在用户明确删除或保存新数据时，才会清空对应的数据
 }
 
 const handleBannerImageChange = (file, fileList) => {
@@ -401,16 +388,7 @@ const handleBannerVideoExternalDelete = () => {
 }
 
 const handleBannerSave = () => {
-  if (bannerForm.type === 'image' && !bannerImageFile.value && !bannerForm.imageUrl) {
-    ElMessage.warning('请上传Banner图片')
-    return
-  }
-  if (bannerForm.type === 'video' && !bannerVideoFile.value && !bannerForm.videoUrlExternal) {
-    ElMessage.warning('请上传Banner视频或输入外部视频URL')
-    return
-  }
-  
-  // 传递文件对象和表单数据
+  // 传递文件对象和表单数据（包含所有数据，让后端决定保留哪些）
   const saveData = {
     type: bannerForm.type,
     videoFile: bannerVideoFile.value,
@@ -418,7 +396,7 @@ const handleBannerSave = () => {
     videoUrl: bannerForm.videoUrl
   }
   
-  // 图片处理：优先使用 Base64（来自裁剪），否则使用文件
+  // 图片处理：优先使用 Base64（来自裁剪），否则使用文件，最后使用已有的图片URL
   if (bannerForm.type === 'image') {
     if (bannerForm.imageUrl && bannerForm.imageUrl.startsWith('data:image/')) {
       // Base64 图片（来自裁剪）
@@ -426,6 +404,17 @@ const handleBannerSave = () => {
     } else if (bannerImageFile.value) {
       // 文件上传
       saveData.imageFile = bannerImageFile.value
+    } else if (bannerForm.imageUrl && !bannerForm.imageUrl.startsWith('data:')) {
+      // 已有的图片URL（不是Base64），保留原有数据
+      saveData.imageUrl = bannerForm.imageUrl
+    }
+  }
+  
+  // 视频处理：如果有新文件或新外部URL，使用新的；否则保留原有的视频数据
+  if (bannerForm.type === 'video') {
+    if (!bannerVideoFile.value && !bannerForm.videoUrlExternal) {
+      // 如果没有新视频数据，保留原有的视频数据（如果有）
+      // videoUrl 和 videoUrlExternal 已经在 saveData 中
     }
   }
   

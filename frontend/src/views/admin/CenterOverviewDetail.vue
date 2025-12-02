@@ -57,8 +57,8 @@
         </el-form-item>
 
         <!-- 主标题 -->
-        <el-form-item label="主标题">
-          <el-input v-model="formData.mainTitle" placeholder="请输入主标题" maxlength="100" show-word-limit />
+        <el-form-item label="主标题" required>
+          <el-input v-model="formData.mainTitle" placeholder="请输入主标题" maxlength="50" show-word-limit />
         </el-form-item>
 
         <!-- 建设背景 -->

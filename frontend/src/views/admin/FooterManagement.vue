@@ -13,15 +13,17 @@
           <div class="tab-content">
             <el-form :model="basicForm" label-width="120px" style="max-width: 800px;">
               <el-form-item label="版权信息">
-                <el-input v-model="basicForm.copyright" placeholder="请输入版权信息，例如：© 2025 东南大学建筑学院实验教学中心" />
+                <el-input v-model="basicForm.copyright" placeholder="请输入版权信息，例如：© 2025 东南大学建筑学院实验教学中心" maxlength="200" show-word-limit />
               </el-form-item>
               <el-form-item label="ICP备案号">
-                <el-input v-model="basicForm.icp" placeholder="请输入ICP备案号" />
+                <el-input v-model="basicForm.icp" placeholder="请输入ICP备案号" maxlength="200" show-word-limit />
               </el-form-item>
               <el-form-item label="Logo">
                 <el-upload
+                  ref="logoUploadRef"
                   :auto-upload="false"
                   :on-change="handleLogoChange"
+                  :before-remove="handleLogoBeforeRemove"
                   :file-list="logoFileList"
                   list-type="picture-card"
                   :limit="1"
@@ -30,12 +32,6 @@
                   <el-icon><Plus /></el-icon>
                 </el-upload>
                 <div class="form-tip">支持上传Logo图片</div>
-                <div v-if="basicForm.logo" class="logo-preview">
-                  <el-image :src="basicForm.logo" style="width: 200px; height: 80px; margin-top: 10px;" fit="contain" />
-                </div>
-              </el-form-item>
-              <el-form-item label="描述">
-                <el-input v-model="basicForm.description" type="textarea" :rows="4" placeholder="请输入描述信息" />
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" @click="handleBasicSave">保存</el-button>
@@ -50,22 +46,13 @@
           <div class="tab-content">
             <el-form :model="contactForm" label-width="120px" style="max-width: 800px;">
               <el-form-item label="地址">
-                <el-input v-model="contactForm.address" placeholder="请输入详细地址" />
+                <el-input v-model="contactForm.address" placeholder="请输入详细地址" maxlength="200" show-word-limit />
               </el-form-item>
               <el-form-item label="邮编">
-                <el-input v-model="contactForm.postcode" placeholder="请输入邮编" />
+                <el-input v-model="contactForm.postcode" placeholder="请输入邮编" maxlength="20" show-word-limit />
               </el-form-item>
               <el-form-item label="电话">
-                <el-input v-model="contactForm.phone" placeholder="请输入联系电话" />
-              </el-form-item>
-              <el-form-item label="传真">
-                <el-input v-model="contactForm.fax" placeholder="请输入传真号码" />
-              </el-form-item>
-              <el-form-item label="邮箱">
-                <el-input v-model="contactForm.email" placeholder="请输入邮箱地址" />
-              </el-form-item>
-              <el-form-item label="工作时间">
-                <el-input v-model="contactForm.workTime" placeholder="请输入工作时间，例如：周一至周五 9:00-17:00" />
+                <el-input v-model="contactForm.phone" placeholder="请输入联系电话" maxlength="50" show-word-limit />
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" @click="handleContactSave">保存</el-button>
@@ -116,14 +103,58 @@
       </el-tabs>
     </el-card>
 
+    <!-- Logo裁剪对话框 -->
+    <el-dialog
+      v-model="logoCropDialogVisible"
+      title="裁剪Logo"
+      width="800px"
+      :close-on-click-modal="false"
+      append-to-body
+      :z-index="3000"
+    >
+      <div class="crop-container">
+        <vue-picture-cropper
+          ref="logoPictureCropperRef"
+          :boxStyle="{
+            width: '100%',
+            height: '400px',
+            backgroundColor: '#f8f8f8',
+            margin: 'auto'
+          }"
+          :img="logoCropImageSrc"
+          :options="{
+            viewMode: 1,
+            dragMode: 'move',
+            aspectRatio: NaN,
+            autoCropArea: 0.8,
+            restore: false,
+            guides: true,
+            center: true,
+            highlight: false,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            toggleDragModeOnDblclick: false
+          }"
+          @ready="onLogoCropReady"
+          @crop="onLogoCrop"
+        />
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cancelLogoCrop">取消</el-button>
+          <el-button type="primary" @click="confirmLogoCrop">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
     <!-- 友情链接编辑对话框 -->
     <el-dialog v-model="linkDialogVisible" :title="linkDialogTitle" width="600px">
       <el-form :model="linkForm" label-width="100px">
-        <el-form-item label="链接名称">
-          <el-input v-model="linkForm.name" placeholder="请输入链接名称" />
+        <el-form-item label="链接名称" required>
+          <el-input v-model="linkForm.name" placeholder="请输入链接名称" maxlength="50" show-word-limit />
         </el-form-item>
-        <el-form-item label="链接地址">
-          <el-input v-model="linkForm.url" placeholder="请输入链接地址，例如：https://www.example.com" />
+        <el-form-item label="链接地址" required>
+          <el-input v-model="linkForm.url" placeholder="请输入链接地址，例如：https://www.example.com" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="是否新窗口">
           <el-radio-group v-model="linkForm.target">
@@ -144,10 +175,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import VuePictureCropper, { cropper } from 'vue-picture-cropper'
 import * as footerApi from '@/services/footerApi'
+import 'cropperjs/dist/cropper.css'
 
 // Tab切换
 const activeTab = ref('contact')
@@ -156,18 +189,139 @@ const activeTab = ref('contact')
 const basicForm = reactive({
   copyright: '© 2025 东南大学建筑学院实验教学中心',
   icp: '',
-  logo: '',
-  description: ''
+  logo: ''
 })
 
 const logoFileList = ref([])
+const logoUploadRef = ref(null)
+
+// Logo裁剪相关
+const logoCropDialogVisible = ref(false)
+const logoCropImageSrc = ref('')
+const logoPendingFile = ref(null)
+const logoPictureCropperRef = ref(null)
+const logoCropperReady = ref(false)
+
+// 构建完整的图片URL
+const getImageUrl = (imageUrl) => {
+  if (!imageUrl) return ''
+  // 如果是完整URL或base64，直接返回
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
+    return imageUrl
+  }
+  // 如果是相对路径，需要加上后端基础URL
+  if (imageUrl.startsWith('/')) {
+    return `http://localhost:8080${imageUrl}`
+  }
+  return `http://localhost:8080/${imageUrl}`
+}
 
 const handleLogoChange = (file) => {
+  // 保存待处理的文件
+  logoPendingFile.value = file
+  
+  // 读取文件为base64，用于裁剪
   const reader = new FileReader()
-  reader.onload = (e) => {
-    basicForm.logo = e.target.result
+  reader.onload = async (e) => {
+    logoCropImageSrc.value = e.target.result
+    await nextTick()
+    logoCropDialogVisible.value = true
   }
+  
+  reader.onerror = () => {
+    ElMessage.error('读取Logo文件失败')
+    if (logoUploadRef.value) {
+      logoUploadRef.value.clearFiles()
+    }
+    logoPendingFile.value = null
+  }
+  
   reader.readAsDataURL(file.raw)
+}
+
+// Logo裁剪器准备就绪
+const onLogoCropReady = () => {
+  logoCropperReady.value = true
+}
+
+// Logo裁剪事件
+const onLogoCrop = () => {
+  // 实时裁剪预览（可选）
+}
+
+// 取消Logo裁剪
+const cancelLogoCrop = () => {
+  logoCropDialogVisible.value = false
+  logoCropImageSrc.value = ''
+  logoPendingFile.value = null
+  logoCropperReady.value = false
+  // 清空上传组件的文件列表
+  if (logoUploadRef.value) {
+    logoUploadRef.value.clearFiles()
+  }
+}
+
+// 确认Logo裁剪
+const confirmLogoCrop = () => {
+  if (!logoCropperReady.value || !cropper || !logoPendingFile.value) {
+    ElMessage.error('裁剪器未准备好，请稍候重试')
+    return
+  }
+  
+  try {
+    // 获取裁剪后的base64图片（不固定尺寸，保持原始裁剪比例）
+    const croppedCanvas = cropper.getCroppedCanvas({
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high'
+    })
+    
+    if (!croppedCanvas) {
+      ElMessage.error('裁剪失败，请重试')
+      return
+    }
+    
+    const croppedImageUrl = croppedCanvas.toDataURL('image/png', 0.9)
+    
+    // 将裁剪后的图片保存到表单
+    basicForm.logo = croppedImageUrl
+    
+    // 更新文件列表显示
+    logoFileList.value = [{
+      uid: Date.now(),
+      url: croppedImageUrl,
+      name: logoPendingFile.value.name
+    }]
+    
+    // 关闭裁剪对话框
+    logoCropDialogVisible.value = false
+    logoCropImageSrc.value = ''
+    logoPendingFile.value = null
+    logoCropperReady.value = false
+  } catch (error) {
+    console.error('Logo裁剪失败:', error)
+    ElMessage.error('Logo裁剪失败')
+  }
+}
+
+// Logo删除前确认
+const handleLogoBeforeRemove = async (file) => {
+  try {
+    await ElMessageBox.confirm('确定要删除Logo吗？', '提示', {
+      type: 'warning'
+    })
+    
+    // 清空Logo
+    basicForm.logo = ''
+    
+    // 允许从上传组件中移除
+    return true
+  } catch (error) {
+    // 用户取消删除，返回 false 阻止删除
+    if (error === 'cancel') {
+      return false
+    }
+    return false
+  }
 }
 
 const handleBasicSave = async () => {
@@ -175,38 +329,50 @@ const handleBasicSave = async () => {
     const result = await footerApi.saveBasic(basicForm)
     if (result.success) {
       ElMessage.success(result.message || '保存成功')
-      loadBasic()
+      await loadBasic()
+    } else {
+      ElMessage.error(result.message || '保存失败')
     }
   } catch (error) {
     console.error('保存基本信息失败:', error)
+    ElMessage.error(error.message || '保存基本信息失败')
   }
 }
 
 const loadBasic = async () => {
   try {
     const result = await footerApi.getBasic()
-    if (result.success && result.data) {
-      Object.assign(basicForm, {
-        copyright: result.data.copyright || '',
-        icp: result.data.icp || '',
-        logo: result.data.logo || '',
-        description: result.data.description || ''
-      })
-      if (result.data.logo) {
-        logoFileList.value = [{ url: result.data.logo }]
+    if (result.success) {
+      if (result.data) {
+        Object.assign(basicForm, {
+          copyright: result.data.copyright || '',
+          icp: result.data.icp || '',
+          logo: result.data.logo || ''
+        })
+        if (result.data.logo) {
+          logoFileList.value = [{ url: getImageUrl(result.data.logo) }]
+        } else {
+          logoFileList.value = []
+        }
+      } else {
+        // 没有数据，重置为默认值
+        basicForm.copyright = '© 2025 东南大学建筑学院实验教学中心'
+        basicForm.icp = ''
+        basicForm.logo = ''
+        logoFileList.value = []
       }
     }
   } catch (error) {
     console.error('加载基本信息失败:', error)
+    ElMessage.error('加载基本信息失败')
   }
 }
 
 const handleBasicReset = () => {
-  basicForm.copyright = '© 2025 东南大学建筑学院实验教学中心'
-  basicForm.icp = ''
-  basicForm.logo = ''
-  basicForm.description = ''
-  logoFileList.value = []
+        basicForm.copyright = '© 2025 东南大学建筑学院实验教学中心'
+        basicForm.icp = ''
+        basicForm.logo = ''
+        logoFileList.value = []
   ElMessage.info('已重置')
 }
 
@@ -214,10 +380,7 @@ const handleBasicReset = () => {
 const contactForm = reactive({
   address: '',
   postcode: '',
-  phone: '',
-  fax: '',
-  email: '',
-  workTime: ''
+  phone: ''
 })
 
 const handleContactSave = async () => {
@@ -225,28 +388,36 @@ const handleContactSave = async () => {
     const result = await footerApi.saveContact(contactForm)
     if (result.success) {
       ElMessage.success(result.message || '保存成功')
-      loadContact()
+      await loadContact()
+    } else {
+      ElMessage.error(result.message || '保存失败')
     }
   } catch (error) {
     console.error('保存联系方式失败:', error)
+    ElMessage.error(error.message || '保存联系方式失败')
   }
 }
 
 const loadContact = async () => {
   try {
     const result = await footerApi.getContact()
-    if (result.success && result.data) {
-      Object.assign(contactForm, {
-        address: result.data.address || '',
-        postcode: result.data.postcode || '',
-        phone: result.data.phone || '',
-        fax: result.data.fax || '',
-        email: result.data.email || '',
-        workTime: result.data.workTime || ''
-      })
+    if (result.success) {
+      if (result.data) {
+        Object.assign(contactForm, {
+          address: result.data.address || '',
+          postcode: result.data.postcode || '',
+          phone: result.data.phone || ''
+        })
+      } else {
+        // 没有数据，重置为空
+        contactForm.address = ''
+        contactForm.postcode = ''
+        contactForm.phone = ''
+      }
     }
   } catch (error) {
     console.error('加载联系方式失败:', error)
+    ElMessage.error('加载联系方式失败')
   }
 }
 
@@ -254,9 +425,6 @@ const handleContactReset = () => {
   contactForm.address = ''
   contactForm.postcode = ''
   contactForm.phone = ''
-  contactForm.fax = ''
-  contactForm.email = ''
-  contactForm.workTime = ''
   ElMessage.info('已重置')
 }
 
@@ -325,10 +493,13 @@ const handleLinkSubmit = async () => {
     if (result.success) {
       ElMessage.success(result.message || '保存成功')
       linkDialogVisible.value = false
-      loadLinkList()
+      await loadLinkList()
+    } else {
+      ElMessage.error(result.message || '保存失败')
     }
   } catch (error) {
     console.error('保存链接失败:', error)
+    ElMessage.error(error.message || '保存链接失败')
   }
 }
 
@@ -340,10 +511,13 @@ const handleLinkDelete = (index) => {
         const result = await footerApi.deleteLink(linkId)
         if (result.success) {
           ElMessage.success(result.message || '删除成功')
-          loadLinkList()
+          await loadLinkList()
+        } else {
+          ElMessage.error(result.message || '删除失败')
         }
       } catch (error) {
         console.error('删除链接失败:', error)
+        ElMessage.error(error.message || '删除链接失败')
       }
     })
     .catch(() => {})
@@ -352,11 +526,16 @@ const handleLinkDelete = (index) => {
 const loadLinkList = async () => {
   try {
     const result = await footerApi.getLinkList()
-    if (result.success && result.data) {
-      linkList.value = result.data
+    if (result.success) {
+      linkList.value = result.data || []
+    } else {
+      linkList.value = []
+      ElMessage.error(result.message || '加载链接列表失败')
     }
   } catch (error) {
     console.error('加载链接列表失败:', error)
+    ElMessage.error('加载链接列表失败')
+    linkList.value = []
   }
 }
 
@@ -418,5 +597,14 @@ onMounted(() => {
 :deep(.el-card__header) {
   background-color: #fafafa;
   border-bottom: 1px solid #ebeef5;
+}
+
+.crop-container {
+  width: 100%;
+  margin: 20px 0;
+}
+
+:deep(.cropper-container) {
+  max-width: 100%;
 }
 </style>

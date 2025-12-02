@@ -80,10 +80,12 @@
                   fit="cover"
                 />
                 <div class="item-form" style="flex: 1;">
-                  <el-form-item label="标题" style="margin-bottom: 15px;">
+                  <el-form-item label="标题" style="margin-bottom: 15px;" required>
                     <el-input
                       v-model="item.title"
                       placeholder="请输入标题"
+                      maxlength="50"
+                      show-word-limit
                       @input="updateCarouselItemConfig(index, 'title', $event)"
                     />
                   </el-form-item>
@@ -91,6 +93,8 @@
                     <el-input
                       v-model="item.link"
                       placeholder="请输入链接地址（可选）"
+                      maxlength="200"
+                      show-word-limit
                       @input="updateCarouselItemConfig(index, 'link', $event)"
                     />
                   </el-form-item>

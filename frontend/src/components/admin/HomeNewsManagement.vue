@@ -70,8 +70,8 @@
       :close-on-click-modal="false"
     >
       <el-form :model="newsForm" label-width="100px">
-        <el-form-item label="标题">
-          <el-input v-model="newsForm.title" placeholder="请输入标题" />
+        <el-form-item label="标题" required>
+          <el-input v-model="newsForm.title" placeholder="请输入标题" maxlength="50" show-word-limit />
         </el-form-item>
         <el-form-item label="作者">
           <el-input v-model="newsForm.author" placeholder="请输入作者" />
@@ -94,7 +94,7 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="内容">
+        <el-form-item label="内容" required>
           <RichTextEditor
             v-model="newsForm.content"
             placeholder="请输入新闻内容，支持插入图片和视频"

@@ -66,10 +66,10 @@
       width="600px"
     >
       <el-form :model="formData" label-width="100px">
-        <el-form-item label="实验室名称">
-          <el-input v-model="formData.name" placeholder="请输入实验室名称" />
+        <el-form-item label="实验室名称" required>
+          <el-input v-model="formData.name" placeholder="请输入实验室名称" maxlength="50" show-word-limit />
         </el-form-item>
-        <el-form-item label="图片">
+        <el-form-item label="图片" required>
           <el-upload
             :auto-upload="false"
             :on-change="handleImageChange"
@@ -82,7 +82,7 @@
           </el-upload>
         </el-form-item>
         <el-form-item label="链接地址">
-          <el-input v-model="formData.link" placeholder="请输入链接地址（可选）" />
+          <el-input v-model="formData.link" placeholder="请输入链接地址（可选）" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="formData.sort" :min="0" />

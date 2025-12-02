@@ -46,10 +46,10 @@
     <!-- 编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
       <el-form :model="formData" label-width="100px">
-        <el-form-item label="名称">
-          <el-input v-model="formData.name" placeholder="请输入产品名称" />
+        <el-form-item label="名称" required>
+          <el-input v-model="formData.name" placeholder="请输入产品名称" maxlength="50" show-word-limit />
         </el-form-item>
-        <el-form-item label="图片">
+        <el-form-item label="图片" required>
           <el-upload
             :auto-upload="false"
             :on-change="handleImageChange"
@@ -68,7 +68,7 @@
           <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入描述" />
         </el-form-item>
         <el-form-item label="链接地址">
-          <el-input v-model="formData.link" placeholder="请输入链接地址，如：https://example.com" />
+          <el-input v-model="formData.link" placeholder="请输入链接地址，如：https://example.com" maxlength="200" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>

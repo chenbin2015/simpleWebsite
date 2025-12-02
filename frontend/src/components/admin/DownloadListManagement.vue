@@ -41,10 +41,10 @@
     <!-- 编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
       <el-form :model="formData" label-width="100px">
-        <el-form-item label="文件名">
-          <el-input v-model="formData.name" placeholder="请输入文件名" />
+        <el-form-item label="文件名" required>
+          <el-input v-model="formData.name" placeholder="请输入文件名" maxlength="50" show-word-limit />
         </el-form-item>
-        <el-form-item label="文件">
+        <el-form-item label="文件" required>
           <el-upload
             :auto-upload="false"
             :on-change="handleFileChange"

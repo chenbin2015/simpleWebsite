@@ -88,6 +88,9 @@ export async function saveBanner(data) {
     } else if (data.image) {
       // 否则使用文件上传
       formData.append('image', data.image)
+    } else if (data.imageUrl && !data.imageUrl.startsWith('data:')) {
+      // 已有的图片URL（不是Base64），保留原有数据
+      formData.append('imageUrl', data.imageUrl)
     }
   } else if (data.type === 'video') {
     if (data.video) {
@@ -95,6 +98,9 @@ export async function saveBanner(data) {
     }
     if (data.videoUrlExternal) {
       formData.append('videoUrlExternal', data.videoUrlExternal)
+    } else if (data.videoUrl && !data.videoUrl.startsWith('data:')) {
+      // 已有的视频URL（不是Base64），保留原有数据
+      formData.append('videoUrl', data.videoUrl)
     }
   }
   

@@ -68,9 +68,9 @@ public class FileUploadUtil {
         // 5. 保存文件（使用绝对路径）
         file.transferTo(filePath.toFile());
         
-        // 6. 返回相对路径（使用正斜杠，适用于Web路径）
+        // 6. 返回完整URL（拼接基础URL）
         String relativePath = UPLOAD_DIR + "/" + dateDir + "/" + fileName;
-        return relativePath;
+        return ConfigUtil.buildFullUrl(relativePath);
     }
     
     /**
@@ -205,8 +205,9 @@ public class FileUploadUtil {
         // 保存文件
         Files.write(filePath, imageBytes);
         
-        // 返回相对路径（使用正斜杠，适用于Web路径）
-        return UPLOAD_DIR + "/" + dateDir + "/" + fileName;
+        // 返回完整URL（拼接基础URL）
+        String relativePath = UPLOAD_DIR + "/" + dateDir + "/" + fileName;
+        return ConfigUtil.buildFullUrl(relativePath);
     }
     
     /**
@@ -237,19 +238,19 @@ public class FileUploadUtil {
             String afterSrc = matcher.group(3) != null ? matcher.group(3) : "";    // src 之后的属性
             
             try {
-                // 将 Base64 图片转换为文件
+                // 将 Base64 图片转换为文件（返回完整URL）
                 String filePath = saveBase64Image(base64Image);
                 
-                // 替换为文件路径（保留原有属性，只替换src）
+                // 替换为完整URL（保留原有属性，只替换src）
                 String replacement;
                 if (beforeSrc.isEmpty() && afterSrc.isEmpty()) {
-                    replacement = "<img src=\"/" + filePath + "\">";
+                    replacement = "<img src=\"" + filePath + "\">";
                 } else if (beforeSrc.isEmpty()) {
-                    replacement = "<img src=\"/" + filePath + "\"" + afterSrc + ">";
+                    replacement = "<img src=\"" + filePath + "\"" + afterSrc + ">";
                 } else if (afterSrc.isEmpty()) {
-                    replacement = "<img" + beforeSrc + " src=\"/" + filePath + "\">";
+                    replacement = "<img" + beforeSrc + " src=\"" + filePath + "\">";
                 } else {
-                    replacement = "<img" + beforeSrc + " src=\"/" + filePath + "\"" + afterSrc + ">";
+                    replacement = "<img" + beforeSrc + " src=\"" + filePath + "\"" + afterSrc + ">";
                 }
                 matcher.appendReplacement(result, java.util.regex.Matcher.quoteReplacement(replacement));
             } catch (Exception e) {

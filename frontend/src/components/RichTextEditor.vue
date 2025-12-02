@@ -210,8 +210,8 @@ onMounted(() => {
           const response = await homeApi.uploadFile(file)
           
           if (response && response.success && response.data && response.data.filePath) {
-            // 构建视频文件的完整URL（使用后端服务器地址）
-            const videoPath = `http://localhost:8080/${response.data.filePath}`
+            // 后端已返回完整URL，直接使用
+            const videoPath = response.data.filePath
             
             // 获取当前光标位置
             const range = quill.getSelection(true)

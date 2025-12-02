@@ -252,8 +252,8 @@
     <!-- 新闻编辑对话框 -->
     <el-dialog v-model="articleDialogVisible" :title="articleDialogTitle" width="1000px" :close-on-click-modal="false">
       <el-form :model="articleForm" label-width="100px">
-        <el-form-item label="标题">
-          <el-input v-model="articleForm.title" placeholder="请输入标题" />
+        <el-form-item label="标题" required>
+          <el-input v-model="articleForm.title" placeholder="请输入标题" maxlength="50" show-word-limit />
         </el-form-item>
         <el-form-item label="作者">
           <el-input v-model="articleForm.author" placeholder="请输入作者" />
@@ -276,7 +276,7 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="内容">
+        <el-form-item label="内容" required>
           <RichTextEditor v-model="articleForm.content" placeholder="请输入新闻内容，支持插入图片和视频" />
         </el-form-item>
         <el-form-item label="状态">
@@ -329,10 +329,12 @@
                   fit="cover"
                 />
                 <div class="item-form" style="flex: 1;">
-                  <el-form-item label="标题" style="margin-bottom: 15px;">
+                  <el-form-item label="标题" style="margin-bottom: 15px;" required>
                     <el-input
                       v-model="item.title"
                       placeholder="请输入标题"
+                      maxlength="50"
+                      show-word-limit
                       @input="updateCarouselItemConfig(index, 'title', $event)"
                     />
                   </el-form-item>
@@ -340,6 +342,8 @@
                     <el-input
                       v-model="item.link"
                       placeholder="请输入链接地址（可选）"
+                      maxlength="200"
+                      show-word-limit
                       @input="updateCarouselItemConfig(index, 'link', $event)"
                     />
                   </el-form-item>
@@ -415,10 +419,10 @@
       :close-on-click-modal="false"
     >
       <el-form :model="announcementForm" label-width="100px">
-        <el-form-item label="标题">
-          <el-input v-model="announcementForm.title" placeholder="请输入标题" />
+        <el-form-item label="标题" required>
+          <el-input v-model="announcementForm.title" placeholder="请输入标题" maxlength="50" show-word-limit />
         </el-form-item>
-        <el-form-item label="内容">
+        <el-form-item label="内容" required>
           <RichTextEditor
             v-model="announcementForm.content"
             placeholder="请输入公告内容，支持插入图片和视频"
@@ -882,6 +886,15 @@ const handleCarouselSubmit = async () => {
     return
   }
   
+  // 校验所有轮播图的标题
+  for (let i = 0; i < carouselImageList.value.length; i++) {
+    const item = carouselImageList.value[i]
+    if (!item.title || !item.title.trim()) {
+      ElMessage.warning(`第 ${i + 1} 张图片的标题不能为空`)
+      return
+    }
+  }
+  
   try {
     let carouselListData = []
     
@@ -903,7 +916,7 @@ const handleCarouselSubmit = async () => {
           
           return {
             image: imageUrl,
-            title: editedItem.title || '',
+            title: editedItem.title.trim(),
             link: editedItem.link || '',
             sort: editedItem.sort !== undefined ? editedItem.sort : item.sort || 0
           }
@@ -933,7 +946,7 @@ const handleCarouselSubmit = async () => {
         
         return {
           image: imageUrl,
-          title: item.title || '',
+          title: item.title.trim(),
           link: item.link || '',
           sort: item.sort !== undefined ? item.sort : (carouselList.value.length + index)
         }
@@ -954,6 +967,15 @@ const handleCarouselSubmit = async () => {
       })
       
       carouselListData = [...existingCarouselData, ...newCarouselData]
+    }
+    
+    // 最终校验：检查所有要保存的轮播图标题
+    for (let i = 0; i < carouselListData.length; i++) {
+      const item = carouselListData[i]
+      if (!item.title || !item.title.trim()) {
+        ElMessage.warning(`第 ${i + 1} 条轮播图的标题不能为空`)
+        return
+      }
     }
     
     // 调用后端API保存

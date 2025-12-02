@@ -24,8 +24,8 @@
           <div class="tab-content">
             <el-form :model="detailForm" label-width="120px" label-position="left">
               <!-- 主标题 -->
-              <el-form-item label="主标题">
-                <el-input v-model="detailForm.mainTitle" placeholder="请输入主标题" maxlength="100" show-word-limit />
+              <el-form-item label="主标题" required>
+                <el-input v-model="detailForm.mainTitle" placeholder="请输入主标题" maxlength="50" show-word-limit />
               </el-form-item>
 
               <!-- 建设背景 -->
@@ -164,10 +164,10 @@
     <!-- 实验室编辑对话框 -->
     <el-dialog v-model="labDialogVisible" :title="labDialogTitle" width="600px">
       <el-form :model="labForm" label-width="100px">
-        <el-form-item label="实验室名称">
-          <el-input v-model="labForm.name" placeholder="请输入实验室名称" />
+        <el-form-item label="实验室名称" required>
+          <el-input v-model="labForm.name" placeholder="请输入实验室名称" maxlength="50" show-word-limit />
         </el-form-item>
-        <el-form-item label="图片">
+        <el-form-item label="图片" required>
           <el-upload
             ref="labImageUploadRef"
             :auto-upload="false"
@@ -182,7 +182,7 @@
           </el-upload>
         </el-form-item>
         <el-form-item label="链接地址">
-          <el-input v-model="labForm.link" placeholder="请输入链接地址（可选）" />
+          <el-input v-model="labForm.link" placeholder="请输入链接地址（可选）" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="labForm.sortOrder" :min="0" />
@@ -275,12 +275,18 @@ const handleBannerSave = async (data) => {
         formData.imageUrl = data.imageUrl
       } else if (data.imageFile) {
         formData.image = data.imageFile
+      } else if (data.imageUrl && !data.imageUrl.startsWith('data:')) {
+        // 已有的图片URL（不是Base64），保留原有数据
+        formData.imageUrl = data.imageUrl
       }
     } else if (data.type === 'video') {
       if (data.videoFile) {
         formData.video = data.videoFile
       } else if (data.videoUrlExternal) {
         formData.videoUrlExternal = data.videoUrlExternal
+      } else if (data.videoUrl && !data.videoUrl.startsWith('data:')) {
+        // 已有的视频URL（不是Base64），保留原有数据
+        formData.videoUrl = data.videoUrl
       }
     }
     

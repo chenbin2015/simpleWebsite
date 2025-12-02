@@ -2,10 +2,13 @@ package com.example.service;
 
 import com.example.entity.*;
 import com.example.repository.*;
+import com.example.util.FileUploadUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,7 +99,7 @@ public class FooterService {
      */
     public Map<String, Object> getLinkList() {
         Map<String, Object> result = new HashMap<>();
-        List<FooterLink> links = linkRepository.findAllOrderBySort();
+        List<FooterLink> links = linkRepository.findAllOrderBySort(); // 已经过滤了deleted=false
         List<Map<String, Object>> data = links.stream().map(l -> {
             Map<String, Object> item = new HashMap<>();
             item.put("id", l.getId());
@@ -119,7 +122,7 @@ public class FooterService {
      */
     public Map<String, Object> getLinkById(Long id) {
         Map<String, Object> result = new HashMap<>();
-        FooterLink link = linkRepository.findById(id).orElse(null);
+        FooterLink link = linkRepository.findByIdAndDeletedFalse(id);
         if (link == null) {
             result.put("success", false);
             result.put("message", "链接不存在");
@@ -177,7 +180,7 @@ public class FooterService {
     public Map<String, Object> updateLink(Long id, Map<String, Object> data) {
         Map<String, Object> result = new HashMap<>();
         
-        FooterLink link = linkRepository.findById(id).orElse(null);
+        FooterLink link = linkRepository.findByIdAndDeletedFalse(id);
         if (link == null) {
             result.put("success", false);
             result.put("message", "链接不存在");
@@ -215,17 +218,23 @@ public class FooterService {
     }
     
     /**
-     * 删除友情链接
+     * 删除友情链接（逻辑删除）
      */
     @Transactional
     public Map<String, Object> deleteLink(Long id) {
         Map<String, Object> result = new HashMap<>();
-        if (!linkRepository.existsById(id)) {
+        FooterLink link = linkRepository.findByIdAndDeletedFalse(id);
+        if (link == null) {
             result.put("success", false);
             result.put("message", "链接不存在");
             return result;
         }
-        linkRepository.deleteById(id);
+        
+        // 逻辑删除
+        link.setDeleted(true);
+        link.setDeletedAt(LocalDateTime.now());
+        linkRepository.save(link);
+        
         result.put("success", true);
         result.put("message", "删除成功");
         return result;
@@ -265,30 +274,54 @@ public class FooterService {
     public Map<String, Object> saveBasic(Map<String, Object> data) {
         Map<String, Object> result = new HashMap<>();
         
-        // 基本信息只有一条记录，先删除旧的
-        basicRepository.deleteAll();
-        
-        FooterBasic basic = new FooterBasic();
-        basic.setCopyright((String) data.get("copyright"));
-        basic.setIcp((String) data.get("icp"));
-        basic.setLogo((String) data.get("logo"));
-        basic.setDescription((String) data.get("description"));
-        
-        basic = basicRepository.save(basic);
-        
-        Map<String, Object> basicData = new HashMap<>();
-        basicData.put("id", basic.getId());
-        basicData.put("copyright", basic.getCopyright());
-        basicData.put("icp", basic.getIcp());
-        basicData.put("logo", basic.getLogo());
-        basicData.put("description", basic.getDescription());
-        basicData.put("createdAt", basic.getCreatedAt());
-        basicData.put("updatedAt", basic.getUpdatedAt());
-        
-        result.put("success", true);
-        result.put("message", "保存成功");
-        result.put("data", basicData);
-        return result;
+        try {
+            // 基本信息只有一条记录，先删除旧的
+            basicRepository.deleteAll();
+            
+            FooterBasic basic = new FooterBasic();
+            basic.setCopyright((String) data.get("copyright"));
+            basic.setIcp((String) data.get("icp"));
+            basic.setDescription((String) data.get("description"));
+            
+            // 处理Logo：如果是Base64格式，转换为文件保存
+            String logo = (String) data.get("logo");
+            if (logo != null && !logo.trim().isEmpty()) {
+                if (logo.startsWith("data:image/")) {
+                    // Base64格式，转换为文件保存
+                    try {
+                        String logoPath = FileUploadUtil.saveBase64Image(logo);
+                        basic.setLogo(logoPath);
+                    } catch (IOException e) {
+                        result.put("success", false);
+                        result.put("message", "Logo图片保存失败: " + e.getMessage());
+                        return result;
+                    }
+                } else {
+                    // 普通URL或路径，直接使用
+                    basic.setLogo(logo.trim());
+                }
+            }
+            
+            basic = basicRepository.save(basic);
+            
+            Map<String, Object> basicData = new HashMap<>();
+            basicData.put("id", basic.getId());
+            basicData.put("copyright", basic.getCopyright());
+            basicData.put("icp", basic.getIcp());
+            basicData.put("logo", basic.getLogo());
+            basicData.put("description", basic.getDescription());
+            basicData.put("createdAt", basic.getCreatedAt());
+            basicData.put("updatedAt", basic.getUpdatedAt());
+            
+            result.put("success", true);
+            result.put("message", "保存成功");
+            result.put("data", basicData);
+            return result;
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "保存失败: " + e.getMessage());
+            return result;
+        }
     }
 }
 

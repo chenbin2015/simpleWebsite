@@ -108,8 +108,8 @@
     <!-- 菜单编辑对话框 -->
     <el-dialog v-model="menuDialogVisible" :title="menuDialogTitle" width="500px">
       <el-form :model="menuForm" label-width="100px">
-        <el-form-item label="菜单名称">
-          <el-input v-model="menuForm.name" placeholder="请输入菜单名称" />
+        <el-form-item label="菜单名称" required>
+          <el-input v-model="menuForm.name" placeholder="请输入菜单名称" maxlength="50" show-word-limit />
         </el-form-item>
         <el-form-item label="图标">
           <el-select v-model="menuForm.icon" placeholder="请选择图标" style="width: 100%;">

@@ -49,8 +49,8 @@
     <!-- 编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="800px">
       <el-form :model="formData" label-width="100px">
-        <el-form-item label="标题">
-          <el-input v-model="formData.title" placeholder="请输入标题" />
+        <el-form-item label="标题" required>
+          <el-input v-model="formData.title" placeholder="请输入标题" maxlength="50" show-word-limit />
         </el-form-item>
         <el-form-item label="作者">
           <el-input v-model="formData.author" placeholder="请输入作者" />
@@ -79,7 +79,7 @@
         <el-form-item label="摘要">
           <el-input v-model="formData.summary" type="textarea" :rows="3" placeholder="请输入摘要" />
         </el-form-item>
-        <el-form-item label="内容">
+        <el-form-item label="内容" required>
           <RichTextEditor v-model="formData.content" placeholder="请输入新闻内容" />
         </el-form-item>
         <el-form-item label="状态">
