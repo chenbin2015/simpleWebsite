@@ -21,6 +21,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="title" label="标题" />
+      <el-table-column prop="description" label="描述" show-overflow-tooltip />
       <el-table-column prop="link" label="链接地址" />
       <el-table-column prop="sort" label="排序" width="100" />
       <el-table-column label="操作" width="200" fixed="right">
@@ -89,6 +90,17 @@
                       @input="updateCarouselItemConfig(index, 'title', $event)"
                     />
                   </el-form-item>
+                  <el-form-item label="描述" style="margin-bottom: 15px;">
+                    <el-input
+                      v-model="item.description"
+                      type="textarea"
+                      :rows="3"
+                      placeholder="请输入轮播图描述（可选）"
+                      maxlength="200"
+                      show-word-limit
+                      @input="updateCarouselItemConfig(index, 'description', $event)"
+                    />
+                  </el-form-item>
                   <el-form-item label="链接地址" style="margin-bottom: 15px;">
                     <el-input
                       v-model="item.link"
@@ -126,7 +138,7 @@
       :z-index="3000"
       append-to-body
     >
-      <div class="crop-container">
+      <div class="crop-container" v-if="cropImageSrc">
         <vue-picture-cropper
           ref="pictureCropperRef"
           :boxStyle="{
@@ -139,7 +151,7 @@
           :options="{
             viewMode: 1,
             dragMode: 'move',
-            aspectRatio: 16 / 9,
+            aspectRatio: NaN,
             autoCropArea: 0.8,
             restore: false,
             guides: true,
@@ -164,7 +176,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import VuePictureCropper, { cropper } from 'vue-picture-cropper'
@@ -253,10 +265,11 @@ const handleCarouselEdit = (row, index) => {
   carouselForm.title = row.title
   carouselForm.link = row.link
   carouselForm.sort = row.sort
-  carouselImageList.value = row.image ? [{
+    carouselImageList.value = row.image ? [{
     url: getImageUrl(row.image),
     name: `image-${row.id}`,
     title: row.title || '',
+    description: row.description || '',
     link: row.link || '',
     sort: row.sort || 0
   }] : []
@@ -314,10 +327,12 @@ const processCropQueue = () => {
   cropImageSrc.value = fileItem.base64
   cropperReady.value = false
   
-  // 使用 nextTick 确保图片源已经设置
-  setTimeout(() => {
+  // 先设置图片源，等待DOM更新后再打开对话框
+  nextTick(async () => {
+    // 等待图片加载完成
+    await new Promise(resolve => setTimeout(resolve, 300))
     cropDialogVisible.value = true
-  }, 200)
+  })
 }
 
 // 裁剪器准备就绪
@@ -371,6 +386,7 @@ const confirmCrop = () => {
       name: currentPendingFile.value.file.name,
       raw: currentPendingFile.value.file.raw,
       title: '',
+      description: '',
       link: '',
       sort: carouselImageList.value.length
     }
@@ -431,6 +447,7 @@ const handleCarouselSubmit = async () => {
       const response = await homeApi.updateCarousel(carouselId, {
         image: imageUrl,
         title: firstImage.title,
+        description: firstImage.description || '',
         link: firstImage.link || '',
         sort: firstImage.sort || 0
       })
@@ -442,6 +459,7 @@ const handleCarouselSubmit = async () => {
       const carouselListData = carouselImageList.value.map((item, index) => ({
         image: item.url,
         title: item.title,
+        description: item.description || '',
         link: item.link || '',
         sort: item.sort !== undefined ? item.sort : (carouselList.value.length + index + 1)
       }))

@@ -2,7 +2,7 @@
   <div class="popular-science-page">
     <div class="banner-container">
       <img 
-        src="https://guanwang.makabaka.ltd/uploads/20251114/56a506a92343ceb274924d4e1aa1bc58.png" 
+        :src="bannerImage" 
         alt="Banner" 
         class="banner-image"
       />
@@ -37,7 +37,6 @@
             >
               <div class="news-content">
                 <h3 class="news-title">{{ news.title }}</h3>
-                <p class="news-desc">{{ news.description }}</p>
               </div>
             </div>
           </div>
@@ -55,9 +54,11 @@
 </template>
   
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import AnnouncementList from '@/components/AnnouncementList.vue'
+import { getBanner, getCarouselList, getArticleList, getAnnouncementList } from '@/services/publicPopularScienceApi'
 
 const router = useRouter()
 
@@ -80,66 +81,174 @@ const handleViewMoreNews = () => {
 }
 
 const handleCarouselClick = (item) => {
-  if (!item.id) {
-    console.warn('轮播图项缺少 ID，无法跳转')
+  // 如果轮播图有link，优先使用link
+  if (item.link) {
+    if (item.link.startsWith('http://') || item.link.startsWith('https://')) {
+      window.open(item.link, '_blank')
+    } else {
+      router.push(item.link)
+    }
     return
   }
-  // 科普教育页面的轮播图，from 参数设置为 "popular-science"
-  router.push({
-    path: `/detail/news/${item.id}`,
-    query: { from: 'popular-science' }
-  })
+  
+  // 如果没有link但有id，跳转到详情页
+  if (item.id) {
+    router.push({
+      path: `/detail/news/${item.id}`,
+      query: { from: 'popular-science' }
+    })
+    return
+  }
+  
+  console.warn('轮播图项缺少 ID 和 link，无法跳转')
 }
 
-const carouselItems = ref([
-  {
-    id: '1',
-    image: 'https://guanwang.makabaka.ltd/uploads/20251114/56a506a92343ceb274924d4e1aa1bc58.png',
-    title: '科普活动1'
-  },
-  {
-    id: '2',
-    image: 'https://guanwang.makabaka.ltd/uploads/20251114/56a506a92343ceb274924d4e1aa1bc58.png',
-    title: '科普活动2'
-  },
-  {
-    id: '3',
-    image: 'https://guanwang.makabaka.ltd/uploads/20251114/56a506a92343ceb274924d4e1aa1bc58.png',
-    title: '科普活动3'
-  }
-])
+// Banner数据
+const bannerImage = ref('https://guanwang.makabaka.ltd/uploads/20251114/56a506a92343ceb274924d4e1aa1bc58.png')
 
-const newsList = ref([
-  {
-    id: '1',
-    title: '科普教育活动成功举办',
-    description: '本次科普教育活动吸引了众多师生参与，活动内容丰富，取得了良好的效果。'
-  },
-  {
-    id: '2',
-    title: '科普知识竞赛圆满结束',
-    description: '科普知识竞赛于近日圆满结束，参赛选手表现优异，展现了良好的科学素养。'
-  },
-  {
-    id: '3',
-    title: '科普讲座：探索科学奥秘',
-    description: '邀请知名专家开展科普讲座，为师生带来精彩的科学知识分享。'
-  },
-  {
-    id: '4',
-    title: '科普展览活动启动',
-    description: '科普展览活动正式启动，展示多项科技成果和科普知识，欢迎师生参观。'
-  }
-])
+// 轮播图数据
+const carouselItems = ref([])
 
-const announcementList = ref([
-  {
-    id: '4',
-    title: '实验教学中心科普基地开放管理制度',
-    description: '实验教学中心科普基地开放管理制度基本描述',
-    date: '2025-10-15'
+// 新闻列表
+const newsList = ref([])
+
+// 公告列表
+const announcementList = ref([])
+
+// 加载Banner
+const loadBanner = async () => {
+  try {
+    const response = await getBanner()
+    if (response.data && response.data.success && response.data.data) {
+      const imageUrl = response.data.data.imageUrl
+      if (imageUrl) {
+        // 构建完整URL
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+          bannerImage.value = imageUrl
+        } else if (imageUrl.startsWith('/')) {
+          bannerImage.value = `http://localhost:8080${imageUrl}`
+        } else {
+          bannerImage.value = `http://localhost:8080/${imageUrl}`
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载Banner失败:', error)
+    // 静默失败，使用默认Banner
   }
-])
+}
+
+// 加载轮播图
+const loadCarousel = async () => {
+  try {
+    const response = await getCarouselList()
+    if (response.data && response.data.success && response.data.data) {
+      const items = response.data.data || []
+      carouselItems.value = items.map(item => {
+        // 构建完整图片URL
+        let imageUrl = item.image
+        if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+          if (imageUrl.startsWith('/')) {
+            imageUrl = `http://localhost:8080${imageUrl}`
+          } else {
+            imageUrl = `http://localhost:8080/${imageUrl}`
+          }
+        }
+        
+        return {
+          id: String(item.id),
+          image: imageUrl || '',
+          title: item.title || '',
+          link: item.link || ''
+        }
+      })
+    }
+  } catch (error) {
+    console.error('加载轮播图失败:', error)
+    ElMessage.warning('加载轮播图失败')
+  }
+}
+
+// 加载新闻列表
+const loadNews = async () => {
+  try {
+    const response = await getArticleList({ page: 1, pageSize: 4 })
+    if (response.data && response.data.success && response.data.data) {
+      const items = response.data.data || []
+      newsList.value = items.map(item => {
+        // 提取摘要
+        let description = ''
+        if (item.content) {
+          const textContent = item.content.replace(/<[^>]*>/g, '').trim()
+          if (textContent) {
+            description = textContent.length > 100 
+              ? textContent.substring(0, 100) + '...'
+              : textContent
+          }
+        }
+        
+        return {
+          id: String(item.id),
+          title: item.title || '',
+          description: description
+        }
+      })
+    }
+  } catch (error) {
+    console.error('加载新闻列表失败:', error)
+    ElMessage.warning('加载新闻列表失败')
+  }
+}
+
+// 加载公告列表
+const loadAnnouncements = async () => {
+  try {
+    const response = await getAnnouncementList({ page: 1, pageSize: 5 })
+    if (response.data && response.data.success && response.data.data) {
+      const items = response.data.data || []
+      announcementList.value = items.map(item => {
+        // 提取摘要
+        let description = ''
+        if (item.content) {
+          const textContent = item.content.replace(/<[^>]*>/g, '').trim()
+          if (textContent) {
+            description = textContent.length > 100 
+              ? textContent.substring(0, 100) + '...'
+              : textContent
+          }
+        }
+        
+        // 解析日期
+        let date = ''
+        if (item.publishTime) {
+          date = item.publishTime.split('T')[0]
+        } else if (item.createdAt) {
+          date = item.createdAt.split('T')[0]
+        }
+        
+        return {
+          id: String(item.id),
+          title: item.title || '',
+          description: description,
+          date: date
+        }
+      })
+    }
+  } catch (error) {
+    console.error('加载公告列表失败:', error)
+    ElMessage.warning('加载公告列表失败')
+  }
+}
+
+// 初始化加载数据
+onMounted(async () => {
+  await Promise.all([
+    loadBanner(),
+    loadCarousel(),
+    loadNews(),
+    loadAnnouncements()
+  ])
+})
 </script>
   
 <style scoped>
@@ -269,7 +378,7 @@ const announcementList = ref([
 }
 
 .news-title {
-  margin: 0 0 8px 0;
+  margin: 0;
   font-size: 16px;
   font-weight: bold;
   color: #333;
@@ -279,18 +388,6 @@ const announcementList = ref([
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
-}
-
-.news-desc {
-  margin: 0;
-  font-size: 14px;
-  color: #666;
-  line-height: 1.6;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 </style>
   

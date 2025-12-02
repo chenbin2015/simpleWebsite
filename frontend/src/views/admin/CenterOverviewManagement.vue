@@ -65,6 +65,27 @@
               <!-- 角色类型列表 -->
               <div v-for="(roleGroup, index) in organizationRoleGroups" :key="index" class="role-group">
                 <div class="role-header">
+                  <!-- 顺序控制按钮 -->
+                  <el-button 
+                    :icon="ArrowUp" 
+                    circle 
+                    size="small"
+                    @click="moveRoleGroupUp(index)"
+                    :disabled="index === 0"
+                    style="margin-right: 10px;"
+                  />
+                  <el-button 
+                    :icon="ArrowDown" 
+                    circle 
+                    size="small"
+                    @click="moveRoleGroupDown(index)"
+                    :disabled="index === organizationRoleGroups.length - 1"
+                    style="margin-right: 10px;"
+                  />
+                  <!-- 顺序显示 -->
+                  <span style="margin-right: 10px; color: #909399; font-size: 14px;">
+                    顺序: {{ index + 1 }}
+                  </span>
                   <el-input
                     v-model="roleGroup.roleName"
                     placeholder="请输入角色类型名称"
@@ -143,7 +164,6 @@
                 </template>
               </el-table-column>
               <el-table-column prop="name" label="实验室名称" min-width="200" />
-              <el-table-column prop="link" label="链接地址" min-width="200" show-overflow-tooltip />
               <el-table-column prop="sortOrder" label="排序" width="100" />
               <el-table-column label="操作" width="200" fixed="right">
                 <template #default="{ row }">
@@ -162,12 +182,12 @@
     </el-card>
 
     <!-- 实验室编辑对话框 -->
-    <el-dialog v-model="labDialogVisible" :title="labDialogTitle" width="600px">
+    <el-dialog v-model="labDialogVisible" :title="labDialogTitle" width="900px">
       <el-form :model="labForm" label-width="100px">
         <el-form-item label="实验室名称" required>
           <el-input v-model="labForm.name" placeholder="请输入实验室名称" maxlength="50" show-word-limit />
         </el-form-item>
-        <el-form-item label="图片" required>
+        <el-form-item label="缩略图" required>
           <el-upload
             ref="labImageUploadRef"
             :auto-upload="false"
@@ -181,8 +201,8 @@
             <el-icon><Plus /></el-icon>
           </el-upload>
         </el-form-item>
-        <el-form-item label="链接地址">
-          <el-input v-model="labForm.link" placeholder="请输入链接地址（可选）" maxlength="200" show-word-limit />
+        <el-form-item label="图文详情">
+          <RichTextEditor v-model="labForm.detail" placeholder="请输入实验室图文详情" />
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="labForm.sortOrder" :min="0" />
@@ -243,7 +263,7 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, RefreshLeft, Plus, Delete, Picture } from '@element-plus/icons-vue'
+import { Check, RefreshLeft, Plus, Delete, Picture, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import BannerManagement from '@/components/admin/BannerManagement.vue'
 import VuePictureCropper, { cropper } from 'vue-picture-cropper'
@@ -437,8 +457,95 @@ const organizationRoleGroups = ref([])
 const addRoleGroup = () => {
   organizationRoleGroups.value.push({
     roleName: '',
+    oldRoleName: '',
+    roleSortOrder: organizationRoleGroups.value.length, // 添加顺序字段
     members: []
   })
+}
+
+// 上移角色类型
+const moveRoleGroupUp = async (index) => {
+  if (index <= 0) return
+  
+  // 交换位置
+  const temp = organizationRoleGroups.value[index]
+  organizationRoleGroups.value[index] = organizationRoleGroups.value[index - 1]
+  organizationRoleGroups.value[index - 1] = temp
+  
+  // 更新所有角色类型的顺序字段
+  organizationRoleGroups.value.forEach((group, idx) => {
+    group.roleSortOrder = idx
+  })
+  
+  // 调用接口保存新的顺序
+  await saveOrganizationOrder()
+}
+
+// 下移角色类型
+const moveRoleGroupDown = async (index) => {
+  if (index >= organizationRoleGroups.value.length - 1) return
+  
+  // 交换位置
+  const temp = organizationRoleGroups.value[index]
+  organizationRoleGroups.value[index] = organizationRoleGroups.value[index + 1]
+  organizationRoleGroups.value[index + 1] = temp
+  
+  // 更新所有角色类型的顺序字段
+  organizationRoleGroups.value.forEach((group, idx) => {
+    group.roleSortOrder = idx
+  })
+  
+  // 调用接口保存新的顺序
+  await saveOrganizationOrder()
+}
+
+// 保存组织架构顺序到后端
+const saveOrganizationOrder = async () => {
+  // 构建角色数据数组，包含顺序信息
+  // 重要：保持成员在当前数组中的顺序，这样就能保持它们在角色内的相对顺序
+  const roleDataArray = organizationRoleGroups.value
+    .filter(group => group.roleName && group.roleName.trim())
+    .map((group, roleIndex) => {
+      // 获取当前角色内的所有成员，保持它们在数组中的顺序
+      const membersInOrder = group.members
+        .filter(m => m.name && m.name.trim())
+        .map((member, memberIndex) => ({
+          id: member.id,
+          name: member.name.trim(),
+          memberIndex: memberIndex // 保存成员在角色内的顺序
+        }))
+      
+      return {
+        roleName: group.roleName.trim(),
+        roleSortOrder: roleIndex,
+        members: membersInOrder
+      }
+    })
+  
+  if (roleDataArray.length === 0) {
+    console.log('没有角色数据，跳过保存')
+    return
+  }
+  
+  console.log('保存组织架构顺序:', roleDataArray)
+  
+  try {
+    loading.value = true
+    const response = await centerOverviewApi.saveOrganizationWithOrder({ roleData: roleDataArray })
+    console.log('保存顺序接口响应:', response)
+    if (response.success) {
+      ElMessage.success('顺序已更新')
+      // 重新加载数据以确保一致性
+      await loadOrganization()
+    } else {
+      ElMessage.error(response.message || '更新顺序失败')
+    }
+  } catch (error) {
+    console.error('更新顺序失败:', error)
+    ElMessage.error('更新顺序失败: ' + (error.message || '未知错误'))
+  } finally {
+    loading.value = false
+  }
 }
 
 // 删除角色类型
@@ -603,16 +710,106 @@ const loadOrganization = async () => {
     const response = await centerOverviewApi.getOrganization()
     if (response.success && response.data) {
       const roleGroups = []
-      // 将后端返回的数据转换为前端格式
-      for (const [roleName, members] of Object.entries(response.data)) {
-        roleGroups.push({
-          roleName: roleName,
-          oldRoleName: roleName, // 保存原始名称用于更新时比较
-          members: members.length > 0 ? members.map(item => ({
-            id: item.id,
-            name: item.name
-          })) : []
-        })
+      
+      // 后端返回的数据格式：优先使用 roleData（包含顺序信息），否则使用 data（旧格式）
+      if (response.roleData && Array.isArray(response.roleData)) {
+        // 新格式：包含顺序信息
+        response.roleData
+          .sort((a, b) => (a.roleSortOrder || 0) - (b.roleSortOrder || 0))
+          .forEach(roleData => {
+            roleGroups.push({
+              roleName: roleData.roleName,
+              oldRoleName: roleData.roleName,
+              roleSortOrder: roleData.roleSortOrder || 0,
+              members: (roleData.members || [])
+                .sort((a, b) => {
+                  // 按成员在该角色内的 sortOrder 排序
+                  const sortA = a.sortOrder || 0
+                  const sortB = b.sortOrder || 0
+                  return sortA - sortB
+                })
+                .map(item => ({
+                  id: item.id,
+                  name: item.name
+                }))
+            })
+          })
+      } else if (response.data) {
+        // 旧格式或新格式的 data 字段：兼容处理
+        // 如果是新格式，data 是对象 { roleName: members[] }，roleData 在 response.roleData
+        // 如果是旧格式，data 就是 { roleName: members[] }
+        if (response.data.roleData && Array.isArray(response.data.roleData)) {
+          // 嵌套在新格式的 data 中
+          response.data.roleData
+            .sort((a, b) => (a.roleSortOrder || 0) - (b.roleSortOrder || 0))
+            .forEach(roleData => {
+              roleGroups.push({
+                roleName: roleData.roleName,
+                oldRoleName: roleData.roleName,
+                roleSortOrder: roleData.roleSortOrder || 0,
+                members: (roleData.members || [])
+                  .sort((a, b) => {
+                    // 按成员在该角色内的 sortOrder 排序，保持成员在角色内的相对顺序
+                    const sortA = a.sortOrder || 0
+                    const sortB = b.sortOrder || 0
+                    return sortA - sortB
+                  })
+                  .map(item => ({
+                    id: item.id,
+                    name: item.name
+                  }))
+              })
+            })
+        } else {
+          // 旧格式：对象格式 { roleName: members[] }
+          // 需要从 sortOrder 中提取角色顺序（sortOrder / 10000）
+          const roleSortMap = new Map()
+          const allMembers = []
+          
+          for (const [roleName, members] of Object.entries(response.data)) {
+            if (Array.isArray(members) && members.length > 0) {
+              // 从第一个成员的 sortOrder 提取角色顺序
+              const firstMemberSortOrder = members[0].sortOrder || 0
+              const roleSortOrder = Math.floor(firstMemberSortOrder / 10000)
+              roleSortMap.set(roleName, roleSortOrder)
+              
+              // 对成员按在该角色内的 sortOrder 排序
+              const sortedMembers = [...members]
+                .sort((a, b) => {
+                  const sortA = a.sortOrder || 0
+                  const sortB = b.sortOrder || 0
+                  return sortA - sortB
+                })
+              
+              allMembers.push({
+                roleName,
+                roleSortOrder,
+                members: sortedMembers.map(item => ({
+                  id: item.id,
+                  name: item.name
+                }))
+              })
+            } else {
+              allMembers.push({
+                roleName,
+                roleSortOrder: roleGroups.length,
+                members: []
+              })
+            }
+          }
+          
+          // 按角色顺序排序
+          allMembers.sort((a, b) => a.roleSortOrder - b.roleSortOrder)
+          
+          allMembers.forEach(item => {
+            roleGroups.push({
+              roleName: item.roleName,
+              oldRoleName: item.roleName,
+              roleSortOrder: item.roleSortOrder,
+              members: item.members
+            })
+          })
+        }
       }
       
       // 如果没有数据，保持为空数组
@@ -636,7 +833,7 @@ const loadLaboratoryList = async () => {
         id: item.id,
         name: item.name,
         imageUrl: item.imageUrl,
-        link: item.link || '',
+        detail: item.detail || '',
         sortOrder: item.sortOrder || 0
       }))
     }
@@ -653,7 +850,7 @@ const labForm = reactive({
   id: null,
   name: '',
   imageUrl: '',
-  link: '',
+  detail: '',
   sortOrder: 0
 })
 const labImageFileList = ref([])
@@ -672,7 +869,7 @@ const handleLabAdd = () => {
   labForm.id = null
   labForm.name = ''
   labForm.imageUrl = ''
-  labForm.link = ''
+  labForm.detail = ''
   labForm.sortOrder = laboratoryList.value.length + 1
   labImageFileList.value = []
   labImageFile.value = null
@@ -684,7 +881,7 @@ const handleLabEdit = (row) => {
   labForm.id = row.id
   labForm.name = row.name
   labForm.imageUrl = row.imageUrl
-  labForm.link = row.link || ''
+  labForm.detail = row.detail || ''
   labForm.sortOrder = row.sortOrder || 0
   labImageFileList.value = row.imageUrl ? [{ url: getImageUrl(row.imageUrl) }] : []
   labImageFile.value = null
@@ -834,7 +1031,7 @@ const handleLabSubmit = async () => {
     loading.value = true
     const formData = {
       name: labForm.name,
-      link: labForm.link || '',
+      detail: labForm.detail || '',
       sortOrder: labForm.sortOrder
     }
     
@@ -843,11 +1040,12 @@ const handleLabSubmit = async () => {
       console.log('使用裁剪后的Base64图片')
       formData.imageUrl = labForm.imageUrl
     } else if (labImageFile.value) {
-      console.log('使用上传的文件')
+      console.log('使用上传的图片文件')
       formData.image = labImageFile.value
     } else {
       console.log('编辑模式：使用现有图片，不传递图片参数')
     }
+    
     
     console.log('提交的formData:', {
       ...formData,

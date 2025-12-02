@@ -201,19 +201,27 @@ export async function getAnnouncementById(id) {
 }
 
 /**
- * 添加公告
- * @param {Object} data - 公告数据
+ * 添加公告（支持附件上传）
+ * @param {FormData|Object} data - 公告数据（FormData对象或普通对象）
  */
 export async function addAnnouncement(data) {
+  // 如果是FormData，使用uploadClient；否则使用apiClient
+  if (data instanceof FormData) {
+    return await uploadClient.post('/announcement', data)
+  }
   return await apiClient.post('/announcement', data)
 }
 
 /**
- * 更新公告
+ * 更新公告（支持附件上传）
  * @param {number} id - 公告ID
- * @param {Object} data - 更新数据
+ * @param {FormData|Object} data - 更新数据（FormData对象或普通对象）
  */
 export async function updateAnnouncement(id, data) {
+  // 如果是FormData，使用uploadClient；否则使用apiClient
+  if (data instanceof FormData) {
+    return await uploadClient.put(`/announcement/${id}`, data)
+  }
   return await apiClient.put(`/announcement/${id}`, data)
 }
 

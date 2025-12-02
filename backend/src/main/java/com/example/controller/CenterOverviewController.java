@@ -118,6 +118,17 @@ public class CenterOverviewController {
     }
     
     /**
+     * 保存组织架构（支持角色类型顺序）
+     */
+    @PostMapping("/organization/order")
+    public Map<String, Object> saveOrganizationWithOrder(@RequestBody Map<String, Object> request) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> roleData = (List<Map<String, Object>>) request.get("roleData");
+        
+        return centerOverviewService.saveOrganizationWithOrder(roleData);
+    }
+    
+    /**
      * 添加单个成员
      */
     @PostMapping("/organization/member")
@@ -169,10 +180,10 @@ public class CenterOverviewController {
             @RequestParam("name") String name,
             @RequestParam(value = "image", required = false) MultipartFile imageFile,
             @RequestParam(value = "imageUrl", required = false) String imageUrl,
-            @RequestParam(value = "link", required = false) String link,
+            @RequestParam(value = "detail", required = false) String detail,
             @RequestParam(value = "sortOrder", required = false) Integer sortOrder) {
         try {
-            return centerOverviewService.addLaboratory(name, imageFile, imageUrl, link, sortOrder);
+            return centerOverviewService.addLaboratory(name, imageFile, imageUrl, detail, sortOrder);
         } catch (IOException e) {
             Map<String, Object> result = new HashMap<>();
             result.put("success", false);
@@ -190,10 +201,10 @@ public class CenterOverviewController {
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "image", required = false) MultipartFile imageFile,
             @RequestParam(value = "imageUrl", required = false) String imageUrl,
-            @RequestParam(value = "link", required = false) String link,
+            @RequestParam(value = "detail", required = false) String detail,
             @RequestParam(value = "sortOrder", required = false) Integer sortOrder) {
         try {
-            return centerOverviewService.updateLaboratory(id, name, imageFile, imageUrl, link, sortOrder);
+            return centerOverviewService.updateLaboratory(id, name, imageFile, imageUrl, detail, sortOrder);
         } catch (IOException e) {
             Map<String, Object> result = new HashMap<>();
             result.put("success", false);

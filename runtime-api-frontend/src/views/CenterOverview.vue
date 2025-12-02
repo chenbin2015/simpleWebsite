@@ -1,17 +1,29 @@
 <template>
   <div class="center-overview">
-    <!-- 视频 Banner -->
+    <!-- Banner -->
     <div class="video-banner">
+      <!-- 视频 Banner -->
       <video
+        v-if="bannerData && bannerData.type === 'video' && (bannerData.videoUrl || bannerData.videoUrlExternal)"
         autoplay
         muted
         loop
         playsinline
         class="banner-video"
       >
-        <source src="https://guanwang.makabaka.ltd/uploads/20250904/e019f993c966552eb6f9693d7b98eace.mp4" type="video/mp4" />
+        <source :src="getVideoUrl(bannerData)" type="video/mp4" />
         您的浏览器不支持视频播放。
       </video>
+      <!-- 图片 Banner -->
+      <img
+        v-else-if="bannerData && bannerData.type === 'image' && bannerData.imageUrl"
+        :src="getImageUrl(bannerData.imageUrl)"
+        alt="Banner"
+        class="banner-image"
+      />
+      <div v-else class="banner-placeholder">
+        <span>暂无Banner</span>
+      </div>
       <div class="video-overlay">
         <div class="breadcrumb">
           <el-icon><HomeFilled /></el-icon>
@@ -23,76 +35,54 @@
     <!-- 主要内容区域 -->
     <div class="content-wrapper">
       <div class="content-container">
-        <!-- 主标题 -->
-        <h1 class="main-title">东南大学建筑学院实验教学中心</h1>
+        <!-- 加载状态 -->
+        <div v-if="loading" class="loading">
+          <p>加载中...</p>
+        </div>
+        
+        <!-- 内容 -->
+        <template v-else>
+          <!-- 主标题 -->
+          <h1 class="main-title">{{ detailData?.mainTitle || '东南大学建筑学院实验教学中心' }}</h1>
 
-        <!-- 建设背景 -->
-        <section class="content-section">
-          <h2 class="section-title">建设背景</h2>
-          <div class="section-content">
-            <p>
-              东南大学建筑学院实验教学中心（以下简称"中心"）是在整合建筑学院原有各专业实验室的基础上，
-              于2025年2月正式成立的综合性实验教学平台。中心致力于为建筑学院各专业的实验教学、科研创新
-              和社会服务提供强有力的支撑。
-            </p>
-          </div>
-        </section>
+          <!-- 建设背景 -->
+          <section v-if="detailData?.background" class="content-section">
+            <h2 class="section-title">建设背景</h2>
+            <div class="section-content" v-html="detailData.background"></div>
+          </section>
 
-        <!-- 现状概况 -->
-        <section class="content-section">
-          <h2 class="section-title">现状概况</h2>
-          <div class="section-content">
-            <p>
-              中心现为省级实验教学示范中心，拥有15个核心实验平台，涵盖6大研究方向/教学领域。
-              中心现有实体实验室31间，总面积超过2200平方米，配备各类仪器设备1200余台（套），
-              设备总值约8000万元，其中大型仪器设备100余台（套），价值约3500万元。
-            </p>
-            <p>
-              中心现有专兼职教师30余人，专职技术人员6人。每年承担实验教学课时数超过2000学时，
-              实验项目数超过300项，服务学生人数超过2000人次。
-            </p>
-            <p>
-              中心在实验教学、科研创新、社会服务等方面取得了显著成效，为培养高素质建筑人才
-              和推动学科发展做出了重要贡献。
-            </p>
-          </div>
-        </section>
+          <!-- 现状概况 -->
+          <section v-if="detailData?.overview" class="content-section">
+            <h2 class="section-title">现状概况</h2>
+            <div class="section-content" v-html="detailData.overview"></div>
+          </section>
 
-        <!-- 发展愿景 -->
-        <section class="content-section">
-          <h2 class="section-title">发展愿景</h2>
-          <div class="section-content">
-            <p>
-              中心将继续秉承"以学生为中心，以能力培养为导向"的理念，不断推进实验教学改革与创新，
-              努力建设成为国内领先、国际知名的实验教学创新示范中心，为培养具有创新精神和实践能力
-              的高素质建筑人才提供更加优质的教学资源和实验环境。
-            </p>
-          </div>
-        </section>
+          <!-- 发展愿景 -->
+          <section v-if="detailData?.vision" class="content-section">
+            <h2 class="section-title">发展愿景</h2>
+            <div class="section-content" v-html="detailData.vision"></div>
+          </section>
 
-        <!-- 组织架构 -->
-        <section class="content-section">
-          <h2 class="section-title">组织架构</h2>
-          <div class="section-content">
-            <div class="organization-structure">
-              <div class="org-item">
-                <span class="org-label">主任：</span>
-                <span class="org-name">王伟</span>
-              </div>
-              <div class="org-item">
-                <span class="org-label">副主任：</span>
-                <span class="org-name">华好、冯世虎</span>
-              </div>
-              <div class="org-item">
-                <span class="org-label">成员：</span>
-                <span class="org-name">是罪、李超明、兰祥启、刘宇衡、周海飞</span>
+          <!-- 组织架构 -->
+          <section v-if="organizationData && Object.keys(organizationData).length > 0" class="content-section">
+            <h2 class="section-title">组织架构</h2>
+            <div class="section-content">
+              <div class="organization-structure">
+                <div
+                  v-for="(members, role) in organizationData"
+                  :key="role"
+                  class="org-item"
+                >
+                  <span class="org-label">{{ role }}：</span>
+                  <span class="org-name">{{ members.map(m => m.name).join('、') }}</span>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </template>
 
         <!-- 下设实验室 -->
-        <section class="content-section">
+        <section v-if="laboratories.length > 0" class="content-section">
           <h2 class="section-title">下设实验室</h2>
           <div class="section-content">
             <el-row :gutter="20" class="lab-grid">
@@ -110,7 +100,7 @@
                 >
                   <div class="lab-image">
                     <el-image
-                      :src="lab.image"
+                      :src="getLabImageUrl(lab.imageUrl)"
                       fit="cover"
                       style="width: 100%; height: 200px;"
                     >
@@ -129,62 +119,178 @@
         </section>
       </div>
     </div>
+    
+    <!-- 实验室详情对话框 -->
+    <el-dialog
+      v-model="labDetailVisible"
+      :title="selectedLab?.name || '实验室详情'"
+      width="80%"
+      :close-on-click-modal="false"
+    >
+      <div v-if="selectedLab" class="lab-detail-content">
+        <div v-if="selectedLab.imageUrl" class="lab-detail-image">
+          <el-image
+            :src="getLabImageUrl(selectedLab.imageUrl)"
+            fit="cover"
+            style="width: 100%; max-height: 400px;"
+          />
+        </div>
+        <div v-if="selectedLab.detail" class="lab-detail-text" v-html="selectedLab.detail"></div>
+        <div v-else class="lab-detail-empty">
+          <p>暂无详情信息</p>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { HomeFilled, Picture } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import {
+  getBanner,
+  getDetail,
+  getOrganization,
+  getLaboratoryList
+} from '@/services/publicCenterOverviewApi'
 
 const router = useRouter()
 
-// 实验室数据
-const laboratories = ref([
-  {
-    id: 1,
-    name: '设计基础实训实验室',
-    image: 'https://via.placeholder.com/400x200?text=设计基础实训实验室',
-    path: '/lab/design-basic'
-  },
-  {
-    id: 2,
-    name: '智能建筑实验室',
-    image: 'https://via.placeholder.com/400x200?text=智能建筑实验室',
-    path: '/lab/smart-building'
-  },
-  {
-    id: 3,
-    name: '建筑物理实验室',
-    image: 'https://via.placeholder.com/400x200?text=建筑物理实验室',
-    path: '/lab/building-physics'
-  },
-  {
-    id: 4,
-    name: '城市大数据与虚拟仿真实验室',
-    image: 'https://via.placeholder.com/400x200?text=城市大数据与虚拟仿真实验室',
-    path: '/lab/urban-bigdata'
-  },
-  {
-    id: 5,
-    name: '遗产保护实验室',
-    image: 'https://via.placeholder.com/400x200?text=遗产保护实验室',
-    path: '/lab/heritage'
-  },
-  {
-    id: 6,
-    name: '数字景观实验室',
-    image: 'https://via.placeholder.com/400x200?text=数字景观实验室',
-    path: '/lab/digital-landscape'
+// 数据状态
+const loading = ref(true)
+const bannerData = ref(null)
+const detailData = ref(null)
+const organizationData = ref({})
+const laboratories = ref([])
+
+// 实验室详情对话框
+const labDetailVisible = ref(false)
+const selectedLab = ref(null)
+
+// 加载所有数据
+const loadData = async () => {
+  loading.value = true
+  try {
+    await Promise.all([
+      loadBanner(),
+      loadDetail(),
+      loadOrganization(),
+      loadLaboratories()
+    ])
+  } catch (error) {
+    console.error('加载中心概况数据失败:', error)
+    ElMessage.error('加载数据失败，请稍后重试')
+  } finally {
+    loading.value = false
   }
-])
+}
+
+// 加载Banner
+const loadBanner = async () => {
+  try {
+    const response = await getBanner()
+    if (response.data.success && response.data.data) {
+      bannerData.value = response.data.data
+    }
+  } catch (error) {
+    console.error('加载Banner失败:', error)
+  }
+}
+
+// 加载详情
+const loadDetail = async () => {
+  try {
+    const response = await getDetail()
+    if (response.data.success && response.data.data) {
+      detailData.value = response.data.data
+    }
+  } catch (error) {
+    console.error('加载详情失败:', error)
+  }
+}
+
+// 加载组织架构
+const loadOrganization = async () => {
+  try {
+    const response = await getOrganization()
+    if (response.data.success && response.data.data) {
+      organizationData.value = response.data.data
+    }
+  } catch (error) {
+    console.error('加载组织架构失败:', error)
+  }
+}
+
+// 加载实验室列表
+const loadLaboratories = async () => {
+  try {
+    const response = await getLaboratoryList()
+    if (response.data.success && response.data.data) {
+      laboratories.value = response.data.data
+    }
+  } catch (error) {
+    console.error('加载实验室列表失败:', error)
+  }
+}
+
+// 获取图片URL
+const getImageUrl = (imageUrl) => {
+  if (!imageUrl) return ''
+  // 如果是完整URL，直接返回
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+  // 如果是相对路径，加上基础URL
+  if (imageUrl.startsWith('/')) {
+    return `http://localhost:8080${imageUrl}`
+  }
+  return `http://localhost:8080/${imageUrl}`
+}
+
+// 获取视频URL
+const getVideoUrl = (banner) => {
+  if (banner.videoUrlExternal) {
+    return banner.videoUrlExternal
+  }
+  if (banner.videoUrl) {
+    return getImageUrl(banner.videoUrl)
+  }
+  return ''
+}
+
+// 获取实验室图片URL
+const getLabImageUrl = (imageUrl) => {
+  return getImageUrl(imageUrl)
+}
 
 // 点击实验室卡片
 const handleLabClick = (lab) => {
-  // 可以跳转到实验室详情页
-  console.log('点击实验室:', lab.name)
-  // router.push(lab.path)
+  // 优先显示详情（如果有富文本详情）
+  if (lab.detail && lab.detail.trim()) {
+    selectedLab.value = lab
+    labDetailVisible.value = true
+    return
+  }
+  
+  // 如果有链接，则跳转
+  if (lab.link) {
+    if (lab.link.startsWith('http://') || lab.link.startsWith('https://')) {
+      window.open(lab.link, '_blank')
+    } else {
+      router.push(lab.link)
+    }
+    return
+  }
+  
+  // 既没有详情也没有链接，显示提示
+  ElMessage.info('该实验室暂无详情信息')
 }
+
+onMounted(() => {
+  loadData()
+})
 </script>
 
 <style scoped>
@@ -201,10 +307,22 @@ const handleLabClick = (lab) => {
   background-color: #000;
 }
 
-.banner-video {
+.banner-video,
+.banner-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.banner-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  color: #999;
+  font-size: 16px;
 }
 
 .video-overlay {
@@ -235,6 +353,12 @@ const handleLabClick = (lab) => {
 }
 
 /* 内容区域 */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
 .content-wrapper {
   background-color: #fff;
   padding: 40px 0;
@@ -376,5 +500,39 @@ const handleLabClick = (lab) => {
   .content-container {
     padding: 0 15px;
   }
+}
+
+/* 实验室详情对话框 */
+.lab-detail-content {
+  padding: 10px 0;
+}
+
+.lab-detail-image {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.lab-detail-text {
+  line-height: 1.8;
+  font-size: 16px;
+  color: #606266;
+}
+
+.lab-detail-text :deep(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+}
+
+.lab-detail-text :deep(video) {
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+}
+
+.lab-detail-empty {
+  text-align: center;
+  padding: 40px;
+  color: #909399;
 }
 </style>

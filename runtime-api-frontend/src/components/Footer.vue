@@ -5,6 +5,13 @@
     <div class="footer-top">
       <div class="footer-logo">
         <img 
+          v-if="basicData && basicData.logo"
+          :src="getFullImageUrl(basicData.logo)" 
+          alt="Logo" 
+          class="logo"
+        />
+        <img 
+          v-else
           src="https://guanwang.makabaka.ltd/uploads/20250910/f803dcb1eedefdac8fcefa641a4d6020.png" 
           alt="Logo" 
           class="logo"
@@ -16,17 +23,29 @@
     <!-- 中间区域：联系信息和友情链接 -->
     <div class="footer-middle">
       <div class="footer-left">
-        <div class="contact-item">
+        <div class="contact-item" v-if="contactData && contactData.phone">
           <span class="label">联系电话：</span>
-          <span class="value">025-83792484</span>
+          <span class="value">{{ contactData.phone }}</span>
         </div>
-        <div class="contact-item">
+        <div class="contact-item" v-if="contactData && contactData.postcode">
           <span class="label">邮编：</span>
-          <span class="value">210096</span>
+          <span class="value">{{ contactData.postcode }}</span>
         </div>
-        <div class="contact-item">
+        <div class="contact-item" v-if="contactData && contactData.address">
           <span class="label">地址：</span>
-          <span class="value">江苏省南京市玄武区四牌楼2号</span>
+          <span class="value">{{ contactData.address }}</span>
+        </div>
+        <div class="contact-item" v-if="contactData && contactData.email">
+          <span class="label">邮箱：</span>
+          <span class="value">{{ contactData.email }}</span>
+        </div>
+        <div class="contact-item" v-if="contactData && contactData.fax">
+          <span class="label">传真：</span>
+          <span class="value">{{ contactData.fax }}</span>
+        </div>
+        <div class="contact-item" v-if="contactData && contactData.workTime">
+          <span class="label">工作时间：</span>
+          <span class="value">{{ contactData.workTime }}</span>
         </div>
       </div>
       
@@ -34,35 +53,111 @@
       
       <div class="footer-right">
         <div class="links-title">友情链接</div>
-        <div class="links-columns">
-          <div class="links-column">
-            <div class="link-item">东南大学</div>
-            <div class="link-item">东南大学建筑学院</div>
-          </div>
-          <div class="links-column">
-            <div class="link-item">东南大学实验室与设备管理处</div>
-            <div class="link-item">东南大学教务处</div>
-          </div>
-          <div class="links-column">
-            <div class="link-item">东南大学科研院</div>
-            <div class="link-item">东南大学保卫处</div>
+        <div class="links-columns" v-if="linksData && linksData.length > 0">
+          <div 
+            class="links-column" 
+            v-for="(column, colIndex) in groupedLinks" 
+            :key="colIndex"
+          >
+            <a 
+              v-for="link in column" 
+              :key="link.id"
+              :href="link.url" 
+              :target="link.target || '_blank'"
+              class="link-item"
+            >
+              {{ link.name }}
+            </a>
           </div>
         </div>
+        <div v-else class="no-links">暂无友情链接</div>
       </div>
     </div>
     
     <!-- 底部：版权信息 -->
     <div class="footer-bottom">
-      <p>Copyright © 2025 东南大学建筑学院实验教学中心All Rights Reserved. 版权所有</p>
+      <p v-if="basicData && basicData.copyright">{{ basicData.copyright }}</p>
+      <p v-else>Copyright © 2025 东南大学建筑学院实验教学中心All Rights Reserved. 版权所有</p>
+      <p v-if="basicData && basicData.icp" class="icp-info">ICP备案号：{{ basicData.icp }}</p>
     </div>
     </div>
   </el-footer>
 </template>
 
-<script>
-export default {
-  name: 'Footer'
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { getContact, getLinkList, getBasic } from '@/services/publicFooterApi'
+
+const contactData = ref(null)
+const linksData = ref([])
+const basicData = ref(null)
+
+// 将友情链接分组显示（每列2个）
+const groupedLinks = computed(() => {
+  if (!linksData.value || linksData.value.length === 0) {
+    return []
+  }
+  
+  const columns = []
+  const itemsPerColumn = 2
+  const totalColumns = Math.ceil(linksData.value.length / itemsPerColumn)
+  
+  for (let i = 0; i < totalColumns; i++) {
+    const start = i * itemsPerColumn
+    const end = start + itemsPerColumn
+    columns.push(linksData.value.slice(start, end))
+  }
+  
+  return columns
+})
+
+// 获取完整的图片URL
+const getFullImageUrl = (url) => {
+  if (!url) return ''
+  
+  // 如果已经是完整URL，直接返回
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  
+  // 如果是相对路径，拼接后端基础URL
+  const baseUrl = 'http://localhost:8080'
+  return url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`
 }
+
+// 加载Footer数据
+const loadFooterData = async () => {
+  try {
+    // 并行加载所有数据
+    const [contactResponse, linksResponse, basicResponse] = await Promise.all([
+      getContact(),
+      getLinkList(),
+      getBasic()
+    ])
+    
+    // 处理联系方式
+    if (contactResponse.data && contactResponse.data.success && contactResponse.data.data) {
+      contactData.value = contactResponse.data.data
+    }
+    
+    // 处理友情链接
+    if (linksResponse.data && linksResponse.data.success && linksResponse.data.data) {
+      linksData.value = linksResponse.data.data
+    }
+    
+    // 处理基本信息
+    if (basicResponse.data && basicResponse.data.success && basicResponse.data.data) {
+      basicData.value = basicResponse.data.data
+    }
+  } catch (error) {
+    console.error('加载Footer数据失败:', error)
+    // 静默失败，使用默认值
+  }
+}
+
+onMounted(() => {
+  loadFooterData()
+})
 </script>
 
 <style scoped>
@@ -161,10 +256,17 @@ export default {
   margin-bottom: 10px;
   cursor: pointer;
   transition: color 0.3s;
+  text-decoration: none;
+  display: block;
 }
 
 .link-item:hover {
   color: #D4AF37;
+}
+
+.no-links {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
 }
 
 /* 底部版权信息 */
@@ -177,6 +279,12 @@ export default {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.7);
   line-height: 1.6;
+}
+
+.footer-bottom .icp-info {
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
 }
 </style>
 

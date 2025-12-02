@@ -255,7 +255,7 @@ public class CenterOverviewService {
     // ========== 组织架构管理 ==========
     
     /**
-     * 获取组织架构（按角色类型分组）
+     * 获取组织架构（按角色类型分组，支持角色类型顺序）
      */
     public Map<String, Object> getOrganization() {
         Map<String, Object> result = new HashMap<>();
@@ -263,27 +263,81 @@ public class CenterOverviewService {
         // 获取所有未删除的组织成员，按sortOrder排序
         List<CenterOverviewOrganization> allOrgs = organizationRepository.findAllNotDeleted();
         
-        // 按角色类型分组，保持插入顺序
-        LinkedHashMap<String, List<Map<String, Object>>> groupedByRole = allOrgs.stream()
+        // 先按sortOrder排序（组合排序值：角色顺序 * 10000 + 成员顺序）
+        List<CenterOverviewOrganization> sortedOrgs = allOrgs.stream()
             .sorted((o1, o2) -> {
-                // 只按sortOrder排序
-                return Integer.compare(o1.getSortOrder() != null ? o1.getSortOrder() : 0, 
-                                     o2.getSortOrder() != null ? o2.getSortOrder() : 0);
+                int sort1 = o1.getSortOrder() != null ? o1.getSortOrder() : 0;
+                int sort2 = o2.getSortOrder() != null ? o2.getSortOrder() : 0;
+                return Integer.compare(sort1, sort2);
             })
+            .collect(Collectors.toList());
+        
+        // 按角色类型分组，提取角色顺序（sortOrder / 10000）
+        Map<String, Integer> roleSortMap = new HashMap<>();
+        for (CenterOverviewOrganization org : sortedOrgs) {
+            String role = org.getRole();
+            if (!roleSortMap.containsKey(role)) {
+                int roleSortOrder = (org.getSortOrder() != null ? org.getSortOrder() : 0) / 10000;
+                roleSortMap.put(role, roleSortOrder);
+            }
+        }
+        
+        // 按角色类型分组，同时保持成员的相对顺序
+        LinkedHashMap<String, List<Map<String, Object>>> groupedByRole = sortedOrgs.stream()
             .collect(Collectors.groupingBy(
                 CenterOverviewOrganization::getRole,
-                LinkedHashMap::new,  // 保持插入顺序（按首次出现的角色顺序）
-                Collectors.mapping(o -> {
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("id", o.getId());
-                    item.put("name", o.getName());
-                    item.put("sortOrder", o.getSortOrder() != null ? o.getSortOrder() : 0);
-                    return item;
-                }, Collectors.toList())
+                LinkedHashMap::new,
+                Collectors.collectingAndThen(
+                    Collectors.toList(),
+                    orgList -> {
+                        // 对每个角色内的成员按完整的 sortOrder 排序（保持它们在角色内的相对顺序）
+                        orgList.sort((o1, o2) -> {
+                            int sort1 = o1.getSortOrder() != null ? o1.getSortOrder() : 0;
+                            int sort2 = o2.getSortOrder() != null ? o2.getSortOrder() : 0;
+                            return Integer.compare(sort1, sort2);
+                        });
+                        // 转换为 Map 列表
+                        return orgList.stream().map(o -> {
+                            Map<String, Object> item = new HashMap<>();
+                            item.put("id", o.getId());
+                            item.put("name", o.getName());
+                            // 成员在该角色内的顺序（sortOrder % 10000）
+                            int memberSortOrder = (o.getSortOrder() != null ? o.getSortOrder() : 0) % 10000;
+                            item.put("sortOrder", memberSortOrder);
+                            return item;
+                        }).collect(Collectors.toList());
+                    }
+                )
             ));
         
+        // 按照角色顺序对分组结果进行排序
+        LinkedHashMap<String, List<Map<String, Object>>> sortedGroupedByRole = groupedByRole.entrySet().stream()
+            .sorted((e1, e2) -> {
+                int sort1 = roleSortMap.getOrDefault(e1.getKey(), Integer.MAX_VALUE);
+                int sort2 = roleSortMap.getOrDefault(e2.getKey(), Integer.MAX_VALUE);
+                return Integer.compare(sort1, sort2);
+            })
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                Map.Entry::getValue,
+                (e1, e2) -> e1,
+                LinkedHashMap::new
+            ));
+        
+        // 构建返回数据，包含角色顺序信息
+        List<Map<String, Object>> roleDataList = sortedGroupedByRole.entrySet().stream()
+            .map(entry -> {
+                Map<String, Object> roleData = new HashMap<>();
+                roleData.put("roleName", entry.getKey());
+                roleData.put("roleSortOrder", roleSortMap.getOrDefault(entry.getKey(), 0));
+                roleData.put("members", entry.getValue());
+                return roleData;
+            })
+            .collect(Collectors.toList());
+        
         result.put("success", true);
-        result.put("data", groupedByRole);
+        result.put("data", sortedGroupedByRole); // 保持向后兼容
+        result.put("roleData", roleDataList); // 新增：包含角色顺序的数组格式
         
         return result;
     }
@@ -327,6 +381,65 @@ public class CenterOverviewService {
                         sortOrder++
                     );
                     organizationRepository.save(org);
+                }
+            }
+        }
+        
+        result.put("success", true);
+        result.put("message", "保存成功");
+        
+        return result;
+    }
+    
+    /**
+     * 保存组织架构（支持角色类型顺序）
+     * 使用组合排序值：角色顺序 * 10000 + 成员顺序
+     */
+    @Transactional
+    public Map<String, Object> saveOrganizationWithOrder(List<Map<String, Object>> roleData) {
+        Map<String, Object> result = new HashMap<>();
+        
+        if (roleData == null || roleData.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "组织架构数据不能为空");
+            return result;
+        }
+        
+        // 先逻辑删除所有现有数据
+        List<CenterOverviewOrganization> existingOrgs = organizationRepository.findAllNotDeleted();
+        for (CenterOverviewOrganization org : existingOrgs) {
+            org.setDeleted(true);
+            org.setDeletedAt(LocalDateTime.now());
+            organizationRepository.save(org);
+        }
+        
+        // 遍历所有角色类型，保存成员（使用组合排序值）
+        for (Map<String, Object> roleInfo : roleData) {
+            String role = (String) roleInfo.get("roleName");
+            Integer roleSortOrder = roleInfo.get("roleSortOrder") != null ? 
+                ((Number) roleInfo.get("roleSortOrder")).intValue() : 0;
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> members = (List<Map<String, Object>>) roleInfo.get("members");
+            
+            if (role == null || role.trim().isEmpty()) {
+                continue;
+            }
+            
+            if (members != null) {
+                int memberIndex = 0;
+                for (Map<String, Object> member : members) {
+                    String name = (String) member.get("name");
+                    if (name != null && !name.trim().isEmpty()) {
+                        // 使用组合排序值：角色顺序 * 10000 + 成员顺序
+                        int combinedSortOrder = roleSortOrder * 10000 + memberIndex;
+                        CenterOverviewOrganization org = new CenterOverviewOrganization(
+                            role.trim(), 
+                            name.trim(), 
+                            combinedSortOrder
+                        );
+                        organizationRepository.save(org);
+                        memberIndex++;
+                    }
                 }
             }
         }
@@ -468,7 +581,7 @@ public class CenterOverviewService {
             item.put("id", l.getId());
             item.put("name", l.getName());
             item.put("imageUrl", l.getImageUrl());
-            item.put("link", l.getLink());
+            item.put("detail", l.getDetail());
             item.put("sortOrder", l.getSortOrder());
             item.put("createdAt", l.getCreatedAt());
             item.put("updatedAt", l.getUpdatedAt());
@@ -486,7 +599,7 @@ public class CenterOverviewService {
      */
     @Transactional
     public Map<String, Object> addLaboratory(String name, MultipartFile imageFile, String imageUrl,
-                                             String link, Integer sortOrder) throws IOException {
+                                             String detail, Integer sortOrder) throws IOException {
         Map<String, Object> result = new HashMap<>();
         
         if (name == null || name.trim().isEmpty()) {
@@ -510,10 +623,13 @@ public class CenterOverviewService {
             return result;
         }
         
+        // 处理富文本详情中的Base64图片，转换为文件路径
+        String processedDetail = detail != null ? FileUploadUtil.processHtmlImages(detail.trim()) : null;
+        
         CenterOverviewLaboratory laboratory = new CenterOverviewLaboratory(
             name.trim(), 
-            finalImageUrl, 
-            link != null ? link.trim() : null, 
+            finalImageUrl,
+            processedDetail,
             sortOrder != null ? sortOrder : 0
         );
         
@@ -523,7 +639,7 @@ public class CenterOverviewService {
         labData.put("id", laboratory.getId());
         labData.put("name", laboratory.getName());
         labData.put("imageUrl", laboratory.getImageUrl());
-        labData.put("link", laboratory.getLink());
+        labData.put("detail", laboratory.getDetail());
         labData.put("sortOrder", laboratory.getSortOrder());
         labData.put("createdAt", laboratory.getCreatedAt());
         labData.put("updatedAt", laboratory.getUpdatedAt());
@@ -540,7 +656,7 @@ public class CenterOverviewService {
      */
     @Transactional
     public Map<String, Object> updateLaboratory(Long id, String name, MultipartFile imageFile, String imageUrl,
-                                                String link, Integer sortOrder) throws IOException {
+                                                String detail, Integer sortOrder) throws IOException {
         Map<String, Object> result = new HashMap<>();
         
         CenterOverviewLaboratory laboratory = laboratoryRepository.findById(id).orElse(null);
@@ -565,8 +681,10 @@ public class CenterOverviewService {
             laboratory.setImageUrl(finalImageUrl);
         }
         
-        if (link != null) {
-            laboratory.setLink(link.trim());
+        // 处理富文本详情中的Base64图片，转换为文件路径
+        if (detail != null) {
+            String processedDetail = FileUploadUtil.processHtmlImages(detail.trim());
+            laboratory.setDetail(processedDetail);
         }
         
         if (sortOrder != null) {
@@ -579,7 +697,7 @@ public class CenterOverviewService {
         labData.put("id", laboratory.getId());
         labData.put("name", laboratory.getName());
         labData.put("imageUrl", laboratory.getImageUrl());
-        labData.put("link", laboratory.getLink());
+        labData.put("detail", laboratory.getDetail());
         labData.put("sortOrder", laboratory.getSortOrder());
         labData.put("createdAt", laboratory.getCreatedAt());
         labData.put("updatedAt", laboratory.getUpdatedAt());

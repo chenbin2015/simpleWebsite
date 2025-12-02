@@ -26,6 +26,11 @@ public class JwtInterceptor implements HandlerInterceptor {
             return true;
         }
         
+        // 公开API路径不需要验证token（用于前端访问）
+        if (path.startsWith("/api/public/")) {
+            return true;
+        }
+        
         // 菜单和内容管理接口需要验证token
         if (path.startsWith("/api/menu") || path.startsWith("/api/content")) {
             // 继续验证token

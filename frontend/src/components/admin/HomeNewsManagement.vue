@@ -76,6 +76,16 @@
         <el-form-item label="作者">
           <el-input v-model="newsForm.author" placeholder="请输入作者" />
         </el-form-item>
+        <el-form-item label="描述">
+          <el-input 
+            v-model="newsForm.description" 
+            type="textarea" 
+            :rows="3"
+            placeholder="请输入新闻描述（最多200字）" 
+            maxlength="200" 
+            show-word-limit 
+          />
+        </el-form-item>
         <el-form-item label="标签">
           <el-select
             v-model="newsForm.tags"
@@ -138,6 +148,7 @@ const newsForm = reactive({
   id: null,
   title: '',
   author: '',
+  description: '',
   content: '',
   tags: [],
   status: 'draft'
@@ -183,6 +194,7 @@ const handleNewsAdd = () => {
   newsForm.id = null
   newsForm.title = ''
   newsForm.author = ''
+  newsForm.description = ''
   newsForm.content = ''
   newsForm.tags = []
   newsForm.status = 'draft'
@@ -199,6 +211,7 @@ const handleNewsEdit = async (row, index) => {
       newsForm.id = data.id
       newsForm.title = data.title
       newsForm.author = data.author
+      newsForm.description = data.description || ''
       newsForm.content = data.content || ''
       newsForm.tags = typeof data.tags === 'string' ? JSON.parse(data.tags || '[]') : (data.tags || [])
       newsForm.status = data.status
@@ -231,6 +244,7 @@ const handleNewsSubmit = async () => {
     const newsData = {
       title: newsForm.title,
       author: newsForm.author,
+      description: newsForm.description,
       content: newsForm.content,
       tags: newsForm.tags,
       status: newsForm.status

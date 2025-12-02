@@ -78,8 +78,8 @@
   import { useRouter, useRoute } from 'vue-router'
   import { Search, Calendar, User } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
-  import { fetchMockData } from '@/services/mockClient'
-  import { getMenuKeyByPageType } from '@/config/menuConfig'
+  import { getModuleNewsList } from '@/services/publicModuleApi'
+  import { getMenuById } from '@/services/publicMenuApi'
   
   const router = useRouter()
   const route = useRoute()
@@ -130,23 +130,82 @@
   
   const loadData = async () => {
     try {
-      const data = await fetchMockData('news-list.json')
-      const pageData = data[props.id]
-  
-      if (!pageData) {
+      const menuId = parseInt(props.id)
+      if (isNaN(menuId)) {
+        ElMessage.error('无效的菜单ID')
+        return
+      }
+      
+      // 先获取菜单信息，使用菜单名称作为标题
+      try {
+        const menuResponse = await getMenuById(menuId)
+        if (menuResponse.data && menuResponse.data.success && menuResponse.data.data) {
+          pageTitle.value = menuResponse.data.data.name || '新闻列表'
+        }
+      } catch (error) {
+        console.warn('获取菜单信息失败，使用默认标题:', error)
+      }
+      
+      const response = await getModuleNewsList(menuId)
+      
+      if (response.data && response.data.success) {
+        const data = response.data.data
+        
+        // 后端返回的data可能是数组，也可能是对象
+        // 如果是数组，直接使用；如果是对象，取items字段
+        const items = Array.isArray(data) ? data : (data?.items || [])
+        newsData.value = items.map(item => {
+          // 解析日期
+          let date = ''
+          if (item.publishTime) {
+            date = item.publishTime.split('T')[0]
+          } else if (item.createdAt) {
+            date = item.createdAt.split('T')[0]
+          }
+          
+          // 提取摘要（始终从content中提取，限制长度，不直接使用summary字段）
+          let summary = ''
+          if (item.content) {
+            const textContent = item.content.replace(/<[^>]*>/g, '').trim()
+            if (textContent) {
+              // 如果summary字段存在且较短，优先使用summary；否则从content提取
+              if (item.summary && item.summary.length <= 150) {
+                summary = item.summary
+              } else {
+                summary = textContent.length > 150 
+                  ? textContent.substring(0, 150) + '...'
+                  : textContent
+              }
+            }
+          } else if (item.summary) {
+            // 如果没有content，才使用summary，但也要限制长度
+            summary = item.summary.length > 150 
+              ? item.summary.substring(0, 150) + '...'
+              : item.summary
+          }
+          
+          return {
+            id: item.id,
+            title: item.title,
+            author: item.author,
+            date,
+            summary,
+            content: item.content,
+            category: item.category
+          }
+        })
+        
+        total.value = newsData.value.length
+        currentPage.value = 1
+      } else {
         pageTitle.value = '新闻列表'
         newsData.value = []
         total.value = 0
-        return
+        ElMessage.error(response.data?.message || '加载新闻数据失败')
       }
-  
-      pageTitle.value = pageData.title || '新闻列表'
-      newsData.value = pageData.items || []
-      total.value = newsData.value.length
-      currentPage.value = 1
     } catch (error) {
-      console.error(error)
-      ElMessage.error('加载新闻数据失败')
+      console.error('加载新闻数据失败:', error)
+      ElMessage.error('加载新闻数据失败: ' + (error.response?.data?.message || error.message || '未知错误'))
       pageTitle.value = '新闻列表'
       newsData.value = []
       total.value = 0

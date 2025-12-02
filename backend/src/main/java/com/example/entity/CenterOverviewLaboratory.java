@@ -16,8 +16,8 @@ public class CenterOverviewLaboratory {
     @Column(name = "image_url", nullable = false, length = 500)
     private String imageUrl;
     
-    @Column(length = 500)
-    private String link;
+    @Column(name = "detail", columnDefinition = "LONGTEXT")
+    private String detail;
     
     @Column(name = "sort_order")
     private Integer sortOrder = 0;
@@ -51,10 +51,10 @@ public class CenterOverviewLaboratory {
     public CenterOverviewLaboratory() {
     }
     
-    public CenterOverviewLaboratory(String name, String imageUrl, String link, Integer sortOrder) {
+    public CenterOverviewLaboratory(String name, String imageUrl, String detail, Integer sortOrder) {
         this.name = name;
         this.imageUrl = imageUrl;
-        this.link = link;
+        this.detail = detail;
         this.sortOrder = sortOrder;
     }
     
@@ -83,12 +83,12 @@ public class CenterOverviewLaboratory {
         this.imageUrl = imageUrl;
     }
     
-    public String getLink() {
-        return link;
+    public String getDetail() {
+        return detail;
     }
     
-    public void setLink(String link) {
-        this.link = link;
+    public void setDetail(String detail) {
+        this.detail = detail;
     }
     
     public Integer getSortOrder() {

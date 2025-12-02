@@ -15,7 +15,8 @@
   <script setup>
   import { ref, onMounted, watch } from 'vue'
   import { ElMessage } from 'element-plus'
-  import { fetchMockData } from '@/services/mockClient'
+  import { getModuleContent } from '@/services/publicModuleApi'
+  import { getMenuById } from '@/services/publicMenuApi'
   
   const props = defineProps({
     id: {
@@ -33,20 +34,42 @@
   
   const loadData = async () => {
     try {
-      const data = await fetchMockData('image-text.json')
-      const pageData = data[props.id]
-  
-      if (!pageData) {
-        pageTitle.value = '图文内容'
-        contentHtml.value = '<p>暂无内容</p>'
+      const menuId = parseInt(props.id)
+      if (isNaN(menuId)) {
+        ElMessage.error('无效的菜单ID')
         return
       }
-  
-      pageTitle.value = pageData.title
-      contentHtml.value = pageData.html
+      
+      // 先获取菜单信息，使用菜单名称作为标题
+      try {
+        const menuResponse = await getMenuById(menuId)
+        if (menuResponse.data && menuResponse.data.success && menuResponse.data.data) {
+          pageTitle.value = menuResponse.data.data.name || '图文内容'
+        }
+      } catch (error) {
+        console.warn('获取菜单信息失败，使用默认标题:', error)
+      }
+      
+      const response = await getModuleContent(menuId)
+      
+      if (response.data && response.data.success) {
+        // 后端返回的格式是 {success: true, content: {...}}
+        const contentData = response.data.content || response.data.data || {}
+        // 如果菜单名称已设置，不再使用contentData.title覆盖
+        if (!pageTitle.value || pageTitle.value === '图文内容') {
+          pageTitle.value = contentData.title || '图文内容'
+        }
+        contentHtml.value = contentData.content || '<p>暂无内容</p>'
+      } else {
+        if (!pageTitle.value || pageTitle.value === '图文内容') {
+          pageTitle.value = '图文内容'
+        }
+        contentHtml.value = '<p>暂无内容</p>'
+        ElMessage.error(response.data?.message || '加载图文内容失败')
+      }
     } catch (error) {
-      console.error(error)
-      ElMessage.error('加载图文内容失败')
+      console.error('加载图文内容失败:', error)
+      ElMessage.error('加载图文内容失败: ' + (error.response?.data?.message || error.message || '未知错误'))
       pageTitle.value = '图文内容'
       contentHtml.value = '<p>暂无内容</p>'
     }

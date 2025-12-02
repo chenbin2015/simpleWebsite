@@ -40,15 +40,27 @@
   </template>
   
   <script setup>
-  import { computed, ref, watch } from 'vue'
+  import { computed, ref, watch, onMounted } from 'vue'
   import { useRoute } from 'vue-router'
-import { getMenuGroupByPath, generateRoutePath, menuGroups, getMenuKeyByPageType } from '@/config/menuConfig'
-import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
+  import { getMenuGroupByPath, generateRoutePath, menuGroups as defaultMenuGroups, getMenuKeyByPageType } from '@/config/menuConfig'
+  import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
+  import { getAllMenus } from '@/services/publicMenuApi'
+  import { convertBackendMenusToMenuGroups } from '@/utils/menuUtils'
+  import { ElMessage } from 'element-plus'
   import * as ElementPlusIconsVue from '@element-plus/icons-vue'
   
   const route = useRoute()
   const activeMenuPath = ref(route.path)
   const openedKeys = ref([])
+  
+  // 动态菜单组（从后端加载）
+  const dynamicMenuGroups = ref({})
+  const menuGroups = computed(() => {
+    // 如果后端菜单已加载，使用后端菜单，否则使用默认菜单
+    return Object.keys(dynamicMenuGroups.value).length > 0 
+      ? dynamicMenuGroups.value 
+      : defaultMenuGroups
+  })
   
   // 定义通用模块的 key 列表（按照显示顺序）
   const commonModuleKeys = [
@@ -61,8 +73,27 @@ import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
   // 获取所有通用模块组
   const commonModuleGroups = computed(() => {
     return commonModuleKeys
-      .map(key => menuGroups[key])
+      .map(key => menuGroups.value[key])
       .filter(group => group !== undefined)
+  })
+  
+  // 加载菜单数据
+  const loadMenus = async () => {
+    try {
+      const response = await getAllMenus()
+      if (response.data && response.data.success && response.data.data) {
+        const converted = convertBackendMenusToMenuGroups(response.data.data)
+        dynamicMenuGroups.value = converted
+      }
+    } catch (error) {
+      console.error('加载菜单失败:', error)
+      // 静默失败，使用默认菜单
+      ElMessage.warning('加载菜单失败，使用默认菜单')
+    }
+  }
+  
+  onMounted(() => {
+    loadMenus()
   })
   
   // 默认展开当前激活的菜单组
@@ -92,12 +123,12 @@ import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
       return null
     }
     
-    const allRootTypes = Object.values(menuGroups).map(g => g.key)
+    const allRootTypes = Object.values(menuGroups.value).map(g => g.key)
     const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
     
     for (const rootType of sortedRootTypes) {
       if (from.startsWith(rootType + '-')) {
-        return menuGroups[rootType] || null
+        return menuGroups.value[rootType] || null
       }
     }
     
@@ -129,7 +160,7 @@ import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
     if (route.path.startsWith('/detail/')) {
       const from = route.query.from
       if (from && from !== 'popular-science' && from !== 'home') {
-        const allRootTypes = Object.values(menuGroups).map(g => g.key)
+        const allRootTypes = Object.values(menuGroups.value).map(g => g.key)
         const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
         
         for (const rootType of sortedRootTypes) {
@@ -153,7 +184,7 @@ import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
       const from = query.from
       if (from && from !== 'popular-science' && from !== 'home') {
         // 从 from 中提取 rootType
-        const allRootTypes = Object.values(menuGroups).map(g => g.key)
+        const allRootTypes = Object.values(menuGroups.value).map(g => g.key)
         const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
         
         let matchedRootType = null
@@ -176,7 +207,7 @@ import { getPageTypeById, getCategoryKeyById } from '@/services/dataService'
             const categoryKey = await getCategoryKeyById(id)
             
             // 找到对应的菜单项
-            const group = menuGroups[matchedRootType]
+            const group = menuGroups.value[matchedRootType]
             if (group) {
               let menuItem = null
               

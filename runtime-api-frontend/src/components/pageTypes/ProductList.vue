@@ -146,7 +146,8 @@
   import { ref, computed, onMounted, watch } from 'vue'
   import { Search, Picture } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
-  import { fetchMockData } from '@/services/mockClient'
+  import { getModuleProductList } from '@/services/publicModuleApi'
+  import { getMenuById } from '@/services/publicMenuApi'
   
   const props = defineProps({
     id: {
@@ -203,24 +204,58 @@
   
   const loadData = async () => {
     try {
-      const data = await fetchMockData('product-list.json')
-      const pageData = data[props.id]
-  
-      if (!pageData) {
+      const menuId = parseInt(props.id)
+      if (isNaN(menuId)) {
+        ElMessage.error('无效的菜单ID')
+        return
+      }
+      
+      // 先获取菜单信息，使用菜单名称作为标题
+      try {
+        const menuResponse = await getMenuById(menuId)
+        if (menuResponse.data && menuResponse.data.success && menuResponse.data.data) {
+          pageTitle.value = menuResponse.data.data.name || '产品列表'
+        }
+      } catch (error) {
+        console.warn('获取菜单信息失败，使用默认标题:', error)
+      }
+      
+      const response = await getModuleProductList(menuId)
+      
+      if (response.data && response.data.success) {
+        const data = response.data.data
+        
+        // 后端返回的data可能是数组，也可能是对象
+        // 如果是数组，直接使用；如果是对象，取items字段
+        const items = Array.isArray(data) ? data : (data?.items || [])
+        productData.value = items.map(item => {
+          // 提取分类列表
+          const itemCategories = item.category ? [item.category] : []
+          if (itemCategories.length > 0 && !categories.value.includes(itemCategories[0])) {
+            categories.value.push(itemCategories[0])
+          }
+          
+          return {
+            id: item.id,
+            name: item.name,
+            image: item.image || item.imageUrl || '',
+            category: item.category || '',
+            description: item.description || '',
+            specs: item.specs || {}
+          }
+        })
+        
+        total.value = productData.value.length
+        currentPage.value = 1
+      } else {
         pageTitle.value = '产品列表'
         productData.value = []
         total.value = 0
-        return
+        ElMessage.error(response.data?.message || '加载产品数据失败')
       }
-  
-      pageTitle.value = pageData.title || '产品列表'
-      categories.value = pageData.categories || []
-      productData.value = pageData.items || []
-      total.value = productData.value.length
-      currentPage.value = 1
     } catch (error) {
-      console.error(error)
-      ElMessage.error('加载产品数据失败')
+      console.error('加载产品数据失败:', error)
+      ElMessage.error('加载产品数据失败: ' + (error.response?.data?.message || error.message || '未知错误'))
       pageTitle.value = '产品列表'
       productData.value = []
       total.value = 0

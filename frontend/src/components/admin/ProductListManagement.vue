@@ -124,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, onMounted } from 'vue'
+import { ref, reactive, nextTick, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Picture } from '@element-plus/icons-vue'
 import VuePictureCropper, { cropper } from 'vue-picture-cropper'
@@ -445,6 +445,15 @@ const handleDelete = async (index) => {
     })
     .catch(() => {})
 }
+
+// 监听menu变化，重新加载数据
+watch(() => props.menu, (newMenu, oldMenu) => {
+  // 当菜单切换时，清空缓存的menuId，并重新加载数据
+  if (newMenu && (!oldMenu || newMenu.id !== oldMenu.id || newMenu.menuId !== oldMenu.menuId)) {
+    menuIdRef.value = null // 清空缓存
+    loadProductList()
+  }
+}, { immediate: false })
 
 onMounted(() => {
   loadProductList()

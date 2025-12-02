@@ -16,6 +16,9 @@ public class HomeNews {
     @Column(nullable = false, length = 100)
     private String author;
     
+    @Column(length = 200)
+    private String description;
+    
     @Column(columnDefinition = "TEXT")
     private String content;
     
@@ -63,9 +66,10 @@ public class HomeNews {
     public HomeNews() {
     }
     
-    public HomeNews(String title, String author, String content, String tags, String status) {
+    public HomeNews(String title, String author, String description, String content, String tags, String status) {
         this.title = title;
         this.author = author;
+        this.description = description;
         this.content = content;
         this.tags = tags;
         this.status = status;
@@ -94,6 +98,14 @@ public class HomeNews {
     
     public void setAuthor(String author) {
         this.author = author;
+    }
+    
+    public String getDescription() {
+        return description;
+    }
+    
+    public void setDescription(String description) {
+        this.description = description;
     }
     
     public String getContent() {

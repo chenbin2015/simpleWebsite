@@ -34,8 +34,8 @@
               </div>
             </div>
             <div class="detail-body">
-              <div class="detail-summary" v-if="detailData.summary">
-                <p>{{ detailData.summary }}</p>
+              <div class="detail-summary" v-if="detailData.description">
+                <p>{{ detailData.description }}</p>
               </div>
               <div class="detail-html-content" v-html="detailData.content"></div>
             </div>
@@ -56,6 +56,11 @@
               <div class="detail-description" v-if="detailData.description">
                 <p>{{ detailData.description }}</p>
               </div>
+              <AttachmentPreview 
+                v-if="detailData.attachmentName && detailData.attachmentUrl"
+                :attachment-url="detailData.attachmentUrl"
+                :attachment-name="detailData.attachmentName"
+              />
               <div class="detail-html-content" v-if="detailData.content" v-html="detailData.content"></div>
             </div>
           </div>
@@ -70,7 +75,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { Calendar, User, Folder } from '@element-plus/icons-vue'
 import PageLayout from '@/components/PageLayout.vue'
+import AttachmentPreview from '@/components/AttachmentPreview.vue'
 import { fetchMockData } from '@/services/mockClient'
+import { getNewsById as getHomeNewsById, getAnnouncementById as getHomeAnnouncementById } from '@/services/publicHomeApi'
+import { getArticleById as getPopularScienceArticleById, getAnnouncementById as getPopularScienceAnnouncementById } from '@/services/publicPopularScienceApi'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const loading = ref(true)
@@ -79,56 +88,148 @@ const detailData = ref(null)
 
 const type = computed(() => route.params.type) // 'news' 或 'announcement'
 const id = computed(() => route.params.id)
+const from = computed(() => route.query.from || '') // 来源参数
 
 onMounted(async () => {
   try {
     loading.value = true
     error.value = null
     
-    // 根据类型获取不同的 mock 数据
-    let fileName = ''
-    if (type.value === 'news') {
-      fileName = 'news-list.json'
-    } else if (type.value === 'announcement') {
-      fileName = 'announcement-list.json'
+    // 根据 from 参数决定使用哪个 API
+    if (from.value === 'home' || from.value === 'popular-science') {
+      await loadFromApi()
     } else {
-      throw new Error('不支持的类型，只支持 news 或 announcement')
-    }
-    
-    // 获取 mock 数据
-    const data = await fetchMockData(fileName)
-    
-    let foundItem = null
-    
-    if (type.value === 'news') {
-      // 新闻数据结构：{ "2": { "title": "...", "items": [...] } }
-      for (const key in data) {
-        const category = data[key]
-        if (category.items && Array.isArray(category.items)) {
-          foundItem = category.items.find(item => item.id === id.value)
-          if (foundItem) break
-        }
-      }
-    } else if (type.value === 'announcement') {
-      // 公告数据结构：{ "items": [...] }
-      if (data.items && Array.isArray(data.items)) {
-        foundItem = data.items.find(item => item.id === id.value)
-      }
-    }
-    
-    if (!foundItem) {
-      error.value = '未找到对应的详情数据'
-      console.warn('未找到详情数据，id:', id.value, 'type:', type.value)
-    } else {
-      detailData.value = foundItem
+      // 其他来源，暂时使用 mock 数据
+      await loadFromMock()
     }
   } catch (err) {
     error.value = err.message || '加载详情失败'
     console.error('加载详情失败:', err)
+    ElMessage.error('加载详情失败')
   } finally {
     loading.value = false
   }
 })
+
+// 从后端 API 加载数据
+const loadFromApi = async () => {
+  try {
+    let response
+    
+    // 根据 from 参数选择不同的 API
+    if (from.value === 'popular-science') {
+      // 科普教育的 API
+      if (type.value === 'news') {
+        response = await getPopularScienceArticleById(id.value)
+      } else if (type.value === 'announcement') {
+        response = await getPopularScienceAnnouncementById(id.value)
+      } else {
+        throw new Error('不支持的类型，只支持 news 或 announcement')
+      }
+    } else {
+      // 首页的 API（默认）
+      if (type.value === 'news') {
+        response = await getHomeNewsById(id.value)
+      } else if (type.value === 'announcement') {
+        response = await getHomeAnnouncementById(id.value)
+      } else {
+        throw new Error('不支持的类型，只支持 news 或 announcement')
+      }
+    }
+    
+    if (response.data.success && response.data.data) {
+      const data = response.data.data
+      
+      // 转换数据格式为前端需要的格式
+      if (type.value === 'news') {
+        // 解析日期
+        let date = ''
+        if (data.publishTime) {
+          date = data.publishTime.split('T')[0]
+        } else if (data.createdAt) {
+          date = data.createdAt.split('T')[0]
+        }
+        
+        detailData.value = {
+          id: data.id,
+          title: data.title,
+          author: data.author || '',
+          description: data.description || '',
+          content: data.content || '',
+          date: date,
+          publishTime: data.publishTime,
+          tags: data.tags || [],
+          category: '' // 新闻没有分类字段
+        }
+      } else if (type.value === 'announcement') {
+        // 解析日期
+        let date = ''
+        if (data.publishTime) {
+          date = data.publishTime.split('T')[0]
+        } else if (data.createdAt) {
+          date = data.createdAt.split('T')[0]
+        }
+        
+        detailData.value = {
+          id: data.id,
+          title: data.title,
+          description: data.description || '',
+          content: data.content || '',
+          date: date,
+          publishTime: data.publishTime,
+          attachmentUrl: data.attachmentUrl || '',
+          attachmentName: data.attachmentName || ''
+        }
+      }
+    } else {
+      error.value = response.data.message || '未找到对应的详情数据'
+    }
+  } catch (err) {
+    console.error('从API加载详情失败:', err)
+    throw err
+  }
+}
+
+// 从 Mock 数据加载（兼容其他来源）
+const loadFromMock = async () => {
+  // 根据类型获取不同的 mock 数据
+  let fileName = ''
+  if (type.value === 'news') {
+    fileName = 'news-list.json'
+  } else if (type.value === 'announcement') {
+    fileName = 'announcement-list.json'
+  } else {
+    throw new Error('不支持的类型，只支持 news 或 announcement')
+  }
+  
+  // 获取 mock 数据
+  const data = await fetchMockData(fileName)
+  
+  let foundItem = null
+  
+  if (type.value === 'news') {
+    // 新闻数据结构：{ "2": { "title": "...", "items": [...] } }
+    for (const key in data) {
+      const category = data[key]
+      if (category.items && Array.isArray(category.items)) {
+        foundItem = category.items.find(item => item.id === id.value)
+        if (foundItem) break
+      }
+    }
+  } else if (type.value === 'announcement') {
+    // 公告数据结构：{ "items": [...] }
+    if (data.items && Array.isArray(data.items)) {
+      foundItem = data.items.find(item => item.id === id.value)
+    }
+  }
+  
+  if (!foundItem) {
+    error.value = '未找到对应的详情数据'
+    console.warn('未找到详情数据，id:', id.value, 'type:', type.value)
+  } else {
+    detailData.value = foundItem
+  }
+}
 </script>
 
 <style scoped>
@@ -261,5 +362,6 @@ onMounted(async () => {
 .announcement-detail .detail-description {
   border-left-color: #ffd700;
 }
+
 </style>
 

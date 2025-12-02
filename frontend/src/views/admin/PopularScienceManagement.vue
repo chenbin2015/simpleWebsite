@@ -55,7 +55,7 @@
                   :options="{
                     viewMode: 1,
                     dragMode: 'move',
-                    aspectRatio: 16 / 9,
+                    aspectRatio: NaN,
                     autoCropArea: 0.8,
                     restore: false,
                     guides: true,
@@ -277,7 +277,11 @@
           </el-select>
         </el-form-item>
         <el-form-item label="内容" required>
-          <RichTextEditor v-model="articleForm.content" placeholder="请输入新闻内容，支持插入图片和视频" />
+          <RichTextEditor 
+            :key="`article-editor-${articleEditorKey}`"
+            v-model="articleForm.content" 
+            placeholder="请输入新闻内容，支持插入图片和视频" 
+          />
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="articleForm.status">
@@ -389,7 +393,7 @@
           :options="{
             viewMode: 1,
             dragMode: 'move',
-            aspectRatio: 16 / 9,
+            aspectRatio: NaN,
             autoCropArea: 0.8,
             restore: false,
             guides: true,
@@ -1110,7 +1114,7 @@ const handleAnnouncementSubmit = async () => {
     ElMessage.warning('请输入标题')
     return
   }
-  if (!announcementForm.content || announcementForm.content.trim() === '' || announcementForm.content === '<p><br></p>') {
+  if (isContentEmpty(announcementForm.content)) {
     ElMessage.warning('请输入内容')
     return
   }
@@ -1185,6 +1189,7 @@ const availableTags = ref(['科普', '节能', '环保', '建筑', '技术'])
 
 const articleDialogVisible = ref(false)
 const articleDialogTitle = ref('添加新闻')
+const articleEditorKey = ref(0) // 用于强制重新渲染RichTextEditor
 const articleForm = reactive({
   id: null,
   title: '',
@@ -1236,6 +1241,8 @@ const handleArticleAdd = () => {
   articleForm.tags = []
   articleForm.content = ''
   articleForm.status = 'draft'
+  // 增加key值，强制重新渲染RichTextEditor
+  articleEditorKey.value++
   articleDialogVisible.value = true
 }
 
@@ -1249,8 +1256,12 @@ const handleArticleEdit = async (row, index) => {
       articleForm.title = response.data.title || ''
       articleForm.author = response.data.author || ''
       articleForm.tags = Array.isArray(response.data.tags) ? [...response.data.tags] : []
+      // 确保content有值，即使后端返回null也设置为空字符串
       articleForm.content = response.data.content || ''
       articleForm.status = response.data.status || 'draft'
+      console.log('加载的新闻内容:', articleForm.content)
+      // 增加key值，强制重新渲染RichTextEditor
+      articleEditorKey.value++
       articleDialogVisible.value = true
     } else {
       ElMessage.error('获取新闻详情失败')
@@ -1261,12 +1272,23 @@ const handleArticleEdit = async (row, index) => {
   }
 }
 
+// 检查内容是否为空（去除HTML标签和空白字符后）
+const isContentEmpty = (content) => {
+  if (!content) return true
+  // 去除HTML标签
+  const textContent = content.replace(/<[^>]*>/g, '').trim()
+  // 检查是否为空或只有空白字符
+  // 同时检查常见的空HTML标签组合
+  const emptyPatterns = ['<p><br></p>', '<p><br/></p>', '<p></p>', '<br>', '<br/>']
+  return textContent === '' || emptyPatterns.includes(content.trim())
+}
+
 const handleArticleSubmit = async () => {
   if (!articleForm.title || !articleForm.title.trim()) {
     ElMessage.warning('请输入标题')
     return
   }
-  if (!articleForm.content || articleForm.content.trim() === '' || articleForm.content === '<p><br></p>') {
+  if (isContentEmpty(articleForm.content)) {
     ElMessage.warning('请输入内容')
     return
   }
@@ -1291,6 +1313,15 @@ const handleArticleSubmit = async () => {
     
     if (response.success) {
       ElMessage.success(articleForm.id ? '编辑成功' : '添加成功')
+      // 清空表单内容，确保下次打开时是干净的
+      articleForm.id = null
+      articleForm.title = ''
+      articleForm.author = ''
+      articleForm.tags = []
+      articleForm.content = ''
+      articleForm.status = 'draft'
+      // 增加key值，确保下次打开时RichTextEditor会重新创建
+      articleEditorKey.value++
       articleDialogVisible.value = false
       // 重新加载新闻列表
       await loadArticles()

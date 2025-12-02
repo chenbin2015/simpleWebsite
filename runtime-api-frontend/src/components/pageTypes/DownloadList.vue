@@ -112,7 +112,8 @@
   import { ref, computed, onMounted, watch } from 'vue'
   import { Search, Document, Download } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
-  import { fetchMockData } from '@/services/mockClient'
+  import { getModuleDownloadList } from '@/services/publicModuleApi'
+  import { getMenuById } from '@/services/publicMenuApi'
   
   const props = defineProps({
     id: {
@@ -182,29 +183,78 @@
   // 加载数据
   const loadData = async () => {
     try {
-      const data = await fetchMockData('download-list.json')
-      const pageData = data[props.id]
-  
-      if (!pageData) {
+      const menuId = parseInt(props.id)
+      if (isNaN(menuId)) {
+        ElMessage.error('无效的菜单ID')
+        return
+      }
+      
+      // 先获取菜单信息，使用菜单名称作为标题
+      try {
+        const menuResponse = await getMenuById(menuId)
+        if (menuResponse.data && menuResponse.data.success && menuResponse.data.data) {
+          pageTitle.value = menuResponse.data.data.name || '下载列表'
+        }
+      } catch (error) {
+        console.warn('获取菜单信息失败，使用默认标题:', error)
+      }
+      
+      const response = await getModuleDownloadList(menuId)
+      
+      if (response.data && response.data.success) {
+        const data = response.data.data
+        
+        // 后端返回的data可能是数组，也可能是对象
+        // 如果是数组，直接使用；如果是对象，取items字段
+        const items = Array.isArray(data) ? data : (data?.items || [])
+        downloadData.value = items.map(item => {
+          // 解析文件类型
+          let fileType = 'other'
+          if (item.filePath) {
+            const ext = item.filePath.split('.').pop()?.toLowerCase()
+            if (ext === 'pdf') fileType = 'pdf'
+            else if (ext === 'doc' || ext === 'docx') fileType = 'doc'
+            else if (ext === 'xls' || ext === 'xlsx') fileType = 'xls'
+          }
+          
+          // 解析日期
+          let updateTime = ''
+          if (item.updatedAt) {
+            updateTime = item.updatedAt.split('T')[0]
+          } else if (item.createdAt) {
+            updateTime = item.createdAt.split('T')[0]
+          }
+          
+          return {
+            id: item.id,
+            name: item.name,
+            filePath: item.filePath || item.fileUrl,
+            category: item.category || '',
+            type: item.fileType || fileType,
+            size: item.size || '',
+            downloadCount: item.downloadCount || 0,
+            updateTime
+          }
+        })
+        
+        // 提取分类列表
+        const computedCategories = Array.from(
+          new Set(downloadData.value.map(item => item.category).filter(Boolean))
+        )
+        if (computedCategories.length) {
+          categories.value = computedCategories
+        }
+        total.value = downloadData.value.length
+        currentPage.value = 1
+      } else {
         pageTitle.value = '下载列表'
         downloadData.value = []
         total.value = 0
-        return
+        ElMessage.error(response.data?.message || '加载下载数据失败')
       }
-  
-      pageTitle.value = pageData.title || '下载列表'
-      downloadData.value = pageData.items || []
-      const computedCategories = Array.from(
-        new Set((pageData.items || []).map(item => item.category).filter(Boolean))
-      )
-      if (computedCategories.length) {
-        categories.value = computedCategories
-      }
-      total.value = downloadData.value.length
-      currentPage.value = 1
     } catch (error) {
-      console.error(error)
-      ElMessage.error('加载下载数据失败')
+      console.error('加载下载数据失败:', error)
+      ElMessage.error('加载下载数据失败: ' + (error.response?.data?.message || error.message || '未知错误'))
       pageTitle.value = '下载列表'
       downloadData.value = []
       total.value = 0
@@ -230,13 +280,18 @@
   
   // 下载
   const handleDownload = (item) => {
-    if (!item.url) {
+    if (!item.filePath) {
       ElMessage.error('暂无可用的下载链接')
       return
     }
   
+    // 构建文件URL（假设文件服务器在 /file/upload/ 路径下）
+    const fileUrl = item.filePath.startsWith('http') 
+      ? item.filePath 
+      : `http://localhost:8080/file${item.filePath}`
+    
     const link = document.createElement('a')
-    link.href = item.url
+    link.href = fileUrl
     link.target = '_blank'
     link.rel = 'noopener'
     link.download = item.name || ''

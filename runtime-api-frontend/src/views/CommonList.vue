@@ -25,10 +25,10 @@
         </div>
 
         <!-- 新闻列表 -->
-        <div v-if="listType === 'news'" class="list-container">
+        <div v-if="listType === 'news'" class="list-container" v-loading="loading">
           <el-card
-            v-for="(item, index) in filteredList"
-            :key="index"
+            v-for="(item, index) in listData"
+            :key="item.id || index"
             shadow="hover"
             class="list-item"
             @click="handleViewDetail(item)"
@@ -55,10 +55,10 @@
         </div>
 
         <!-- 公告列表 -->
-        <div v-else-if="listType === 'announcement'" class="list-container">
+        <div v-else-if="listType === 'announcement'" class="list-container" v-loading="loading">
           <el-card
-            v-for="(item, index) in filteredList"
-            :key="index"
+            v-for="(item, index) in listData"
+            :key="item.id || index"
             shadow="hover"
             class="list-item announcement-item"
             @click="handleViewDetail(item)"
@@ -76,10 +76,10 @@
         </div>
 
         <!-- 空状态 -->
-        <el-empty v-if="filteredList.length === 0" description="暂无数据" />
+        <el-empty v-if="!loading && listData.length === 0" description="暂无数据" />
 
         <!-- 分页 -->
-        <div class="pagination-container" v-if="filteredList.length > 0">
+        <div class="pagination-container" v-if="!loading && listData.length > 0">
           <el-pagination
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
@@ -96,12 +96,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElCard, ElInput, ElButton, ElIcon, ElEmpty, ElPagination, ElMessage } from 'element-plus'
 import { Search, Calendar, User } from '@element-plus/icons-vue'
 import PageLayout from '@/components/PageLayout.vue'
-import { fetchMockData } from '@/services/mockClient'
+import { getNewsList as getHomeNewsList, getAnnouncementList as getHomeAnnouncementList } from '@/services/publicHomeApi'
+import { getArticleList as getPopularScienceArticleList, getAnnouncementList as getPopularScienceAnnouncementList } from '@/services/publicPopularScienceApi'
 
 const route = useRoute()
 const router = useRouter()
@@ -131,74 +132,136 @@ const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
-
-// 过滤后的列表
-const filteredList = computed(() => {
-  let result = listData.value
-  
-  // 搜索过滤
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(item => 
-      item.title?.toLowerCase().includes(keyword) ||
-      item.summary?.toLowerCase().includes(keyword) ||
-      item.description?.toLowerCase().includes(keyword)
-    )
-  }
-  
-  total.value = result.length
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return result.slice(start, end)
-})
+const loading = ref(false)
 
 // 加载数据
 const loadData = async () => {
+  if (loading.value) return
+  
   try {
-    if (listType.value === 'news') {
-      // 加载所有新闻
-      const data = await fetchMockData('news-list.json')
-      const allNews = []
-      
-      // 遍历所有分类，收集所有新闻
-      for (const key in data) {
-        const category = data[key]
-        if (category.items && Array.isArray(category.items)) {
-          allNews.push(...category.items)
-        }
-      }
-      
-      listData.value = allNews
-    } else {
-      // 加载所有公告
-      const data = await fetchMockData('announcement-list.json')
-      listData.value = data.items || []
+    loading.value = true
+    
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      keyword: searchKeyword.value || undefined
     }
     
-    total.value = listData.value.length
-    currentPage.value = 1
+    let response
+    // 根据from参数决定调用哪个API
+    if (from.value === 'popular-science') {
+      // 从科普教育来的，调用科普教育的API
+      if (listType.value === 'news') {
+        response = await getPopularScienceArticleList(params)
+      } else {
+        response = await getPopularScienceAnnouncementList(params)
+      }
+    } else {
+      // 从首页来的（默认），调用首页的API
+      if (listType.value === 'news') {
+        response = await getHomeNewsList(params)
+      } else {
+        response = await getHomeAnnouncementList(params)
+      }
+    }
+    
+    if (response.data && response.data.success) {
+      const data = response.data.data || []
+      
+      // 转换数据格式
+      listData.value = data.map(item => {
+        // 解析日期
+        let date = ''
+        if (item.publishTime) {
+          date = item.publishTime.split('T')[0]
+        } else if (item.createdAt) {
+          date = item.createdAt.split('T')[0]
+        }
+        
+        // 提取描述（始终从content中提取摘要，限制长度）
+        let description = ''
+        if (item.content) {
+          const textContent = item.content.replace(/<[^>]*>/g, '').trim()
+          if (textContent) {
+            // 如果description字段存在且较短，优先使用description；否则从content提取
+            if (item.description && item.description.length <= 150) {
+              description = item.description
+            } else {
+              description = textContent.length > 150 
+                ? textContent.substring(0, 150) + '...'
+                : textContent
+            }
+          }
+        } else if (item.description) {
+          // 如果没有content，才使用description，但也要限制长度
+          description = item.description.length > 150 
+            ? item.description.substring(0, 150) + '...'
+            : item.description
+        }
+        
+        return {
+          id: item.id,
+          title: item.title,
+          description,
+          summary: description,
+          date,
+          author: item.author,
+          content: item.content
+        }
+      })
+      
+      // 设置总数（使用后端返回的total，如果没有则使用data长度）
+      total.value = response.data.total || data.length
+    } else {
+      listData.value = []
+      total.value = 0
+      ElMessage.error(response.data?.message || '加载数据失败')
+    }
   } catch (error) {
     console.error('加载数据失败:', error)
-    ElMessage.error('加载数据失败')
+    ElMessage.error('加载数据失败: ' + (error.response?.data?.message || error.message || '未知错误'))
     listData.value = []
     total.value = 0
+  } finally {
+    loading.value = false
   }
 }
+
+// 监听类型变化，重新加载数据
+watch(listType, () => {
+  currentPage.value = 1
+  searchKeyword.value = ''
+  loadData()
+})
+
+// 监听from参数变化，重新加载数据
+watch(from, () => {
+  currentPage.value = 1
+  searchKeyword.value = ''
+  loadData()
+})
+
+// 监听分页变化
+watch([currentPage, pageSize], () => {
+  loadData()
+})
 
 // 搜索
 const handleSearch = () => {
   currentPage.value = 1
-  ElMessage.success('搜索完成')
+  loadData()
 }
 
 // 分页
 const handleSizeChange = (val) => {
   pageSize.value = val
   currentPage.value = 1
+  // loadData 会在 watch 中自动触发
 }
 
 const handleCurrentChange = (val) => {
   currentPage.value = val
+  // loadData 会在 watch 中自动触发
 }
 
 // 查看详情

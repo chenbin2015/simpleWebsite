@@ -1,7 +1,26 @@
 <template>
     <!-- 全屏 Banner -->
-    <div class="banner-container">
+    <div class="banner-container" v-if="bannerData">
+      <!-- 图片Banner -->
       <img 
+        v-if="bannerData.type === 'image' && bannerData.imageUrl"
+        :src="bannerData.imageUrl" 
+        alt="Banner" 
+        class="banner-image"
+      />
+      <!-- 视频Banner -->
+      <video
+        v-else-if="bannerData.type === 'video' && (bannerData.videoUrl || bannerData.videoUrlExternal)"
+        :src="bannerData.videoUrl || bannerData.videoUrlExternal"
+        autoplay
+        muted
+        loop
+        playsinline
+        class="banner-video"
+      />
+      <!-- 默认Banner（如果没有数据） -->
+      <img 
+        v-else
         src="https://guanwang.makabaka.ltd/uploads/20251114/c6030f82aa4475c108496dd426f19ac6.png" 
         alt="Banner" 
         class="banner-image"
@@ -52,14 +71,19 @@
   </template>
   
   <script setup>
-  import { computed, watch } from 'vue'
+  import { ref, computed, watch, onMounted } from 'vue'
   import { useRoute } from 'vue-router'
   import PageLayout from '@/components/PageLayout.vue'
   import NewsList from '@/components/pageTypes/NewsList.vue'
   import ProductList from '@/components/pageTypes/ProductList.vue'
   import ImageText from '@/components/pageTypes/ImageText.vue'
   import DownloadList from '@/components/pageTypes/DownloadList.vue'
+  import { getModuleBanner } from '@/services/publicModuleApi'
+  
   const route = useRoute()
+  
+  // Banner数据
+  const bannerData = ref(null)
   
   // 从路由参数获取信息
   const rootType = computed(() => route.params.rootType)
@@ -77,6 +101,21 @@
     'download-list': '下载列表'
   }
   
+  // 加载Banner
+  const loadBanner = async () => {
+    if (!rootType.value) return
+    
+    try {
+      const response = await getModuleBanner(rootType.value)
+      if (response.data && response.data.success && response.data.data) {
+        bannerData.value = response.data.data
+      }
+    } catch (error) {
+      console.error('加载Banner失败:', error)
+      // 静默失败，使用默认Banner
+    }
+  }
+  
   // 在控制台打印页面类型信息
   watch([rootType, type, id, pageType], ([root, menuType, pageId, pageTypeValue]) => {
     const typeText = pageTypeTextMap[pageTypeValue] || pageTypeValue || '未知'
@@ -86,7 +125,18 @@
     console.log('PageType:', pageTypeValue, `(${typeText})`)
     console.log('ID:', pageId)
     console.log('==================')
+    
+    // 当rootType变化时，重新加载Banner
+    if (root) {
+      loadBanner()
+    }
   }, { immediate: true })
+  
+  onMounted(() => {
+    if (rootType.value) {
+      loadBanner()
+    }
+  })
   </script>
   
 <style scoped>
@@ -100,6 +150,14 @@
   width: 100%;
   height: auto;
   display: block;
+}
+
+.banner-video {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: 500px;
+  object-fit: cover;
 }
 
 .dynamic-page {

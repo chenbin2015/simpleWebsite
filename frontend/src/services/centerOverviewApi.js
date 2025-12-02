@@ -169,6 +169,15 @@ export async function saveOrganization(data) {
 }
 
 /**
+ * 保存组织架构（支持角色类型顺序）
+ * @param {Object} data - 组织架构数据
+ * @param {Array} data.roleData - 角色数据数组，例如: [{ roleName: "主任", roleSortOrder: 0, members: [{ id: 1, name: "张三" }] }]
+ */
+export async function saveOrganizationWithOrder(data) {
+  return await jsonClient.post('/organization/order', data)
+}
+
+/**
  * 添加单个成员
  * @param {string} role - 角色名称
  * @param {string} name - 成员姓名
@@ -223,7 +232,7 @@ export async function getLaboratoryList() {
  * @param {string} data.name - 实验室名称（必填）
  * @param {File} data.image - 图片文件（可选，如果提供了imageUrl则不需要）
  * @param {string} data.imageUrl - Base64图片字符串（可选，优先于image）
- * @param {string} data.link - 链接地址（可选）
+ * @param {string} data.detail - 图文详情（HTML内容，可选）
  * @param {number} data.sortOrder - 排序（可选）
  */
 export async function addLaboratory(data) {
@@ -237,8 +246,8 @@ export async function addLaboratory(data) {
     formData.append('image', data.image)
   }
   
-  if (data.link) {
-    formData.append('link', data.link)
+  if (data.detail) {
+    formData.append('detail', data.detail)
   }
   if (data.sortOrder !== undefined) {
     formData.append('sortOrder', data.sortOrder)
@@ -254,7 +263,7 @@ export async function addLaboratory(data) {
  * @param {string} data.name - 实验室名称（可选）
  * @param {File} data.image - 图片文件（可选，如果提供了imageUrl则不需要）
  * @param {string} data.imageUrl - Base64图片字符串（可选，优先于image）
- * @param {string} data.link - 链接地址（可选）
+ * @param {string} data.detail - 图文详情（HTML内容，可选）
  * @param {number} data.sortOrder - 排序（可选）
  */
 export async function updateLaboratory(id, data) {
@@ -271,8 +280,8 @@ export async function updateLaboratory(id, data) {
     formData.append('image', data.image)
   }
   
-  if (data.link !== undefined) {
-    formData.append('link', data.link || '')
+  if (data.detail !== undefined) {
+    formData.append('detail', data.detail || '')
   }
   if (data.sortOrder !== undefined) {
     formData.append('sortOrder', data.sortOrder)

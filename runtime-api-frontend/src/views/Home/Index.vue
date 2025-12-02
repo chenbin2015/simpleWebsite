@@ -2,10 +2,14 @@
   <div class="home-page">
     <div class="banner-container">
       <img 
-        src="https://guanwang.makabaka.ltd/uploads/20251114/4d14316aa3a1c172ff536a089e11f35a.png" 
+        v-if="bannerImage"
+        :src="bannerImage" 
         alt="Banner" 
         class="banner-image"
       />
+      <div v-else class="banner-placeholder">
+        <span>暂无Banner图</span>
+      </div>
     </div>
     <div class="content-module">
      
@@ -21,12 +25,18 @@
             <div class="news-carousel">
               <el-carousel :interval="4000" height="400px" indicator-position="outside" arrow="always">
                 <el-carousel-item v-for="(item, index) in carouselItems" :key="index">
-                  <img 
-                    :src="item.image" 
-                    :alt="item.title" 
-                    class="carousel-image"
-                    @click="handleCarouselClick(item)"
-                  />
+                  <div class="carousel-wrapper">
+                    <img 
+                      :src="item.image" 
+                      :alt="item.title" 
+                      class="carousel-image"
+                      @click="handleCarouselClick(item)"
+                    />
+                    <div class="carousel-overlay" v-if="item.title || item.description">
+                      <h3 class="carousel-title" v-if="item.title">{{ item.title }}</h3>
+                      <p class="carousel-description" v-if="item.description">{{ item.description }}</p>
+                    </div>
+                  </div>
                 </el-carousel-item>
               </el-carousel>
             </div>
@@ -82,6 +92,13 @@
 <script>
 import { Calendar, Lock, Tools } from '@element-plus/icons-vue'
 import AnnouncementList from '@/components/AnnouncementList.vue'
+import { 
+  getBanner, 
+  getCarouselList, 
+  getNewsList, 
+  getAnnouncementList 
+} from '@/services/publicHomeApi'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'Home',
@@ -91,7 +108,148 @@ export default {
     Tools,
     AnnouncementList
   },
+  data() {
+    return {
+      bannerImage: null,
+      carouselItems: [],
+      newsList: [],
+      serviceList: [
+        {
+          name: '实验设备共享借用',
+          iconComponent: Tools,
+          url: 'https://jzxy.seu.edu.cn/wpjy/'
+        },
+        {
+          name: '实验申请与安全准入',
+          iconComponent: Lock,
+          url: 'https://10.201.0.173:8443/lspcp-web/board'
+        }
+      ],
+      announcementList: [],
+      loading: false
+    }
+  },
+  async mounted() {
+    await this.loadHomeData()
+  },
   methods: {
+    async loadHomeData() {
+      this.loading = true
+      try {
+        // 并行加载所有数据
+        await Promise.all([
+          this.loadBanner(),
+          this.loadCarousel(),
+          this.loadNews(),
+          this.loadAnnouncements()
+        ])
+      } catch (error) {
+        console.error('加载首页数据失败:', error)
+        ElMessage.error('加载首页数据失败，请稍后重试')
+      } finally {
+        this.loading = false
+      }
+    },
+    async loadBanner() {
+      try {
+        const response = await getBanner()
+        if (response.data.success && response.data.data) {
+          this.bannerImage = response.data.data.imageUrl
+        }
+      } catch (error) {
+        console.error('加载Banner失败:', error)
+      }
+    },
+    async loadCarousel() {
+      try {
+        const response = await getCarouselList()
+        if (response.data.success && response.data.data) {
+          this.carouselItems = response.data.data.map(item => ({
+            id: item.id,
+            image: item.image,
+            title: item.title,
+            description: item.description,
+            link: item.link
+          }))
+        }
+      } catch (error) {
+        console.error('加载轮播图失败:', error)
+      }
+    },
+    async loadNews() {
+      try {
+        const response = await getNewsList({ page: 1, pageSize: 4 })
+        if (response.data.success && response.data.data) {
+          this.newsList = response.data.data.map(news => {
+            // 解析日期
+            let day = ''
+            let month = ''
+            if (news.publishTime) {
+              const date = new Date(news.publishTime)
+              day = date.getDate().toString()
+              month = `${date.getMonth() + 1}月`
+            } else if (news.createdAt) {
+              const date = new Date(news.createdAt)
+              day = date.getDate().toString()
+              month = `${date.getMonth() + 1}月`
+            }
+            
+            // 直接使用描述字段
+            let description = news.description || ''
+            
+            return {
+              id: news.id,
+              day,
+              month,
+              title: news.title,
+              description
+            }
+          })
+        }
+      } catch (error) {
+        console.error('加载新闻失败:', error)
+      }
+    },
+    async loadAnnouncements() {
+      try {
+        const response = await getAnnouncementList({ page: 1, pageSize: 10 })
+        if (response.data.success && response.data.data) {
+          this.announcementList = response.data.data.map(announcement => {
+            // 优先使用后端的描述字段，如果没有则从内容中提取
+            let description = announcement.description || ''
+            if (!description && announcement.content) {
+              const textContent = announcement.content.replace(/<[^>]*>/g, '').trim()
+              if (textContent) {
+                description = textContent.length > 50 
+                  ? textContent.substring(0, 50) + '...'
+                  : textContent
+              }
+            }
+            // 如果还是没有描述，使用标题作为后备
+            if (!description) {
+              description = announcement.title
+            }
+            
+            // 解析日期
+            let date = ''
+            if (announcement.publishTime) {
+              date = announcement.publishTime.split('T')[0]
+            } else if (announcement.createdAt) {
+              date = announcement.createdAt.split('T')[0]
+            }
+            
+            return {
+              id: announcement.id,
+              title: announcement.title,
+              description,
+              date
+            }
+          })
+        }
+      } catch (error) {
+        console.error('加载公告失败:', error)
+      }
+    },
     handleNewsClick(news) {
       if (!news.id) {
         console.warn('新闻项缺少 ID，无法跳转')
@@ -109,15 +267,23 @@ export default {
       }
     },
     handleCarouselClick(item) {
-      if (!item.id) {
-        console.warn('轮播图项缺少 ID，无法跳转')
+      // 如果有链接地址，直接跳转
+      if (item.link) {
+        if (item.link.startsWith('http://') || item.link.startsWith('https://')) {
+          window.open(item.link, '_blank')
+        } else {
+          this.$router.push(item.link)
+        }
         return
       }
-      // 首页的轮播图，from 参数设置为 "home"
-      this.$router.push({
-        path: `/detail/news/${item.id}`,
-        query: { from: 'home' }
-      })
+      
+      // 如果没有链接，但有ID，跳转到新闻详情
+      if (item.id) {
+        this.$router.push({
+          path: `/detail/news/${item.id}`,
+          query: { from: 'home' }
+        })
+      }
     },
     handleViewMoreNews() {
       // 跳转到通用列表页面，显示所有新闻
@@ -132,89 +298,6 @@ export default {
         path: '/common-list',
         query: { type: 'announcement', from: 'home' }
       })
-    }
-  },
-  data() {
-    return {
-      carouselItems: [
-        {
-          id: '1',
-          image: 'https://guanwang.makabaka.ltd/uploads/20251114/89478336803a8c829b418cdfb19b769c.jpg',
-          title: '2025年东南大学教育部YES项目艺术与媒介国际暑期学校'
-        },
-        {
-          id: '2',
-          image: 'https://guanwang.makabaka.ltd/uploads/20251114/d78356969635624a85008c826595f8a6.png',
-          title: '李迎成教授荣获2023年度中国城市规划学会青年科技奖'
-        },
-        {
-          id: '3',
-          image: 'https://guanwang.makabaka.ltd/uploads/20250904/25ff9f802341defe3844aee5e555e51c.jpg',
-          title: '从伟大抗战精神中汲取前行力量'
-        }
-      ],
-      newsList: [
-        {
-          id: '1',
-          day: '13',
-          month: '10月',
-          title: '2025年东南大学教育部YES项目艺术与媒介国际暑期学校圆满结营',
-          description: '2025年东南大学教育部YES项目艺术与媒介国际暑期学校于近日圆满结营，来自多个国家的学员参与了此次学习交流活动。'
-        },
-        {
-          id: '2',
-          day: '12',
-          month: '10月',
-          title: '李迎成教授荣获2023年度中国城市规划学会青年科技奖',
-          description: '李迎成教授凭借在城乡规划领域的突出贡献，荣获2023年度中国城市规划学会青年科技奖。'
-        },
-        {
-          id: '3',
-          day: '11',
-          month: '10月',
-          title: '"2025教育部YES项目艺术与媒介国际暑期学校"开营',
-          description: '2025教育部YES项目艺术与媒介国际暑期学校正式开营，来自世界各地的学员齐聚一堂，共同开启学习交流之旅。'
-        },
-        {
-          id: '4',
-          day: '10',
-          month: '10月',
-          title: '从伟大抗战精神中汲取前行力量!纪念大会引发东南大学师生热烈反响',
-          description: '纪念大会在东南大学举行，师生们纷纷表示要从伟大抗战精神中汲取前行力量，为实现中华民族伟大复兴而努力奋斗。'
-        }
-      ],
-      serviceList: [
-        {
-          name: '实验设备共享借用',
-          iconComponent: Tools,
-          url: 'https://jzxy.seu.edu.cn/wpjy/'
-        },
-        {
-          name: '实验申请与安全准入',
-          iconComponent: Lock,
-          url: 'https://10.201.0.173:8443/lspcp-web/board'
-        }
-      ],
-      announcementList: [
-        {
-          id: '1',
-          title: '关于成立建筑学院实验教学中心的通知',
-          description: '关于成立建筑学院实验教学中心的通知',
-          date: '2025-09-09'
-        },
-        {
-          id: '2',
-          title: '关于印发《建筑学院实验室安全奖惩实施细则》的通知',
-          description: '关于印发《建筑学院实验室安全奖惩实施细则》的通知',
-          date: '2025-09-09'
-        },
-        {
-          id: '3',
-          title: '关于调整建筑学院实验室安全领导小组成员及其职责分工的通知',
-          description: '关于调整建筑学院实验室安全领导小组成员及其职责分工的通知',
-          date: '2025-09-04'
-        }
-      ]
     }
   }
 }
@@ -278,6 +361,17 @@ export default {
   display: block;
 }
 
+.banner-placeholder {
+  width: 100%;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  color: #999;
+  font-size: 16px;
+}
+
 .news-content-wrapper {
   display: flex;
   gap: 20px;
@@ -299,6 +393,12 @@ export default {
   width: 100%;
 }
 
+.carousel-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 .carousel-image {
   width: 100%;
   height: 100%;
@@ -310,6 +410,37 @@ export default {
 
 .carousel-image:hover {
   opacity: 0.9;
+}
+
+.carousel-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0));
+  color: #fff;
+  padding: 30px 20px 20px;
+  box-sizing: border-box;
+}
+
+.carousel-title {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1.4;
+}
+
+.carousel-description {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .page-container {

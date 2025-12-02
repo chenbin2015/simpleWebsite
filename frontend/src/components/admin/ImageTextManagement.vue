@@ -28,7 +28,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, RefreshLeft } from '@element-plus/icons-vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
@@ -178,6 +178,15 @@ const handleReset = () => {
     })
     .catch(() => {})
 }
+
+// 监听menu变化，重新加载数据
+watch(() => props.menu, (newMenu, oldMenu) => {
+  // 当菜单切换时，清空缓存的menuId，并重新加载数据
+  if (newMenu && (!oldMenu || newMenu.id !== oldMenu.id || newMenu.menuId !== oldMenu.menuId)) {
+    menuIdRef.value = null // 清空缓存
+    loadData()
+  }
+}, { immediate: false })
 
 onMounted(() => {
   loadData()

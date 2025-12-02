@@ -188,12 +188,22 @@ public class HomeController {
     }
     
     /**
-     * 添加公告
+     * 添加公告（支持附件上传）
      */
     @PostMapping("/announcement")
-    public Map<String, Object> addAnnouncement(@RequestBody Map<String, Object> request) {
+    public Map<String, Object> addAnnouncement(
+            @RequestParam("title") String title,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam("content") String content,
+            @RequestParam(value = "status", required = false, defaultValue = "draft") String status,
+            @RequestParam(value = "attachment", required = false) MultipartFile attachmentFile) {
         try {
-            return homeService.addAnnouncement(request);
+            Map<String, Object> data = new HashMap<>();
+            data.put("title", title);
+            data.put("description", description);
+            data.put("content", content);
+            data.put("status", status);
+            return homeService.addAnnouncement(data, attachmentFile);
         } catch (IOException e) {
             Map<String, Object> result = new HashMap<>();
             result.put("success", false);
@@ -203,12 +213,28 @@ public class HomeController {
     }
     
     /**
-     * 更新公告
+     * 更新公告（支持附件上传）
      */
     @PutMapping("/announcement/{id}")
-    public Map<String, Object> updateAnnouncement(@PathVariable Long id, @RequestBody Map<String, Object> request) {
+    public Map<String, Object> updateAnnouncement(
+            @PathVariable Long id,
+            @RequestParam("title") String title,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam("content") String content,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "attachment", required = false) MultipartFile attachmentFile,
+            @RequestParam(value = "removeAttachment", required = false, defaultValue = "false") Boolean removeAttachment) {
         try {
-            return homeService.updateAnnouncement(id, request);
+            Map<String, Object> data = new HashMap<>();
+            data.put("title", title);
+            data.put("description", description);
+            data.put("content", content);
+            data.put("status", status);
+            // 如果标记为删除附件，设置attachmentUrl为null
+            if (removeAttachment != null && removeAttachment) {
+                data.put("attachmentUrl", null);
+            }
+            return homeService.updateAnnouncement(id, data, attachmentFile);
         } catch (IOException e) {
             Map<String, Object> result = new HashMap<>();
             result.put("success", false);

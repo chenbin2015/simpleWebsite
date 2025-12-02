@@ -39,7 +39,7 @@
           :options="{
             viewMode: 1,
             dragMode: 'move',
-            aspectRatio: 16 / 9,
+            aspectRatio: NaN,
             autoCropArea: 0.8,
             restore: false,
             guides: true,

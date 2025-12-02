@@ -16,6 +16,9 @@ public class HomeCarousel {
     @Column(nullable = false, length = 200)
     private String title;
     
+    @Column(length = 200)
+    private String description;
+    
     @Column(length = 500)
     private String link;
     
@@ -51,9 +54,10 @@ public class HomeCarousel {
     public HomeCarousel() {
     }
     
-    public HomeCarousel(String image, String title, String link, Integer sort) {
+    public HomeCarousel(String image, String title, String description, String link, Integer sort) {
         this.image = image;
         this.title = title;
+        this.description = description;
         this.link = link;
         this.sort = sort;
     }
@@ -81,6 +85,14 @@ public class HomeCarousel {
     
     public void setTitle(String title) {
         this.title = title;
+    }
+    
+    public String getDescription() {
+        return description;
+    }
+    
+    public void setDescription(String description) {
+        this.description = description;
     }
     
     public String getLink() {

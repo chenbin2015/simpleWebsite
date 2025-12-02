@@ -13,8 +13,17 @@ public class HomeAnnouncement {
     @Column(nullable = false, length = 200)
     private String title;
     
+    @Column(length = 200)
+    private String description;
+    
     @Column(columnDefinition = "TEXT")
     private String content;
+    
+    @Column(name = "attachment_url", length = 500)
+    private String attachmentUrl;
+    
+    @Column(name = "attachment_name", length = 255)
+    private String attachmentName;
     
     @Column(nullable = false, length = 20)
     private String status = "draft"; // draft, published
@@ -57,8 +66,9 @@ public class HomeAnnouncement {
     public HomeAnnouncement() {
     }
     
-    public HomeAnnouncement(String title, String content, String status) {
+    public HomeAnnouncement(String title, String description, String content, String status) {
         this.title = title;
+        this.description = description;
         this.content = content;
         this.status = status;
     }
@@ -80,12 +90,36 @@ public class HomeAnnouncement {
         this.title = title;
     }
     
+    public String getDescription() {
+        return description;
+    }
+    
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    
     public String getContent() {
         return content;
     }
     
     public void setContent(String content) {
         this.content = content;
+    }
+    
+    public String getAttachmentUrl() {
+        return attachmentUrl;
+    }
+    
+    public void setAttachmentUrl(String attachmentUrl) {
+        this.attachmentUrl = attachmentUrl;
+    }
+    
+    public String getAttachmentName() {
+        return attachmentName;
+    }
+    
+    public void setAttachmentName(String attachmentName) {
+        this.attachmentName = attachmentName;
     }
     
     public String getStatus() {

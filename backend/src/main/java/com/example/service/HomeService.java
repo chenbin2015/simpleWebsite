@@ -188,6 +188,7 @@ public class HomeService {
             item.put("id", c.getId());
             item.put("image", c.getImage());
             item.put("title", c.getTitle());
+            item.put("description", c.getDescription());
             item.put("link", c.getLink() != null ? c.getLink() : "");
             item.put("sort", c.getSort());
             item.put("createdAt", c.getCreatedAt());
@@ -210,6 +211,7 @@ public class HomeService {
         for (Map<String, Object> item : carouselList) {
             String image = (String) item.get("image");
             String title = (String) item.get("title");
+            String description = item.get("description") != null ? (String) item.get("description") : null;
             String link = item.get("link") != null ? (String) item.get("link") : "";
             Integer sort = item.get("sort") != null ? ((Number) item.get("sort")).intValue() : 0;
             
@@ -231,7 +233,7 @@ public class HomeService {
                 return result;
             }
             
-            HomeCarousel carousel = new HomeCarousel(finalImageUrl, title, link, sort);
+            HomeCarousel carousel = new HomeCarousel(finalImageUrl, title, description, link, sort);
             carouselRepository.save(carousel);
         }
         
@@ -271,6 +273,9 @@ public class HomeService {
         if (data.containsKey("title")) {
             carousel.setTitle((String) data.get("title"));
         }
+        if (data.containsKey("description")) {
+            carousel.setDescription((String) data.get("description"));
+        }
         if (data.containsKey("link")) {
             carousel.setLink((String) data.get("link"));
         }
@@ -284,6 +289,7 @@ public class HomeService {
         carouselData.put("id", carousel.getId());
         carouselData.put("image", carousel.getImage());
         carouselData.put("title", carousel.getTitle());
+        carouselData.put("description", carousel.getDescription());
         carouselData.put("link", carousel.getLink());
         carouselData.put("sort", carousel.getSort());
         carouselData.put("createdAt", carousel.getCreatedAt());
@@ -342,6 +348,7 @@ public class HomeService {
             item.put("id", n.getId());
             item.put("title", n.getTitle());
             item.put("author", n.getAuthor());
+            item.put("description", n.getDescription());
             item.put("content", n.getContent());
             item.put("tags", parseTagsFromString(n.getTags()));
             item.put("status", n.getStatus());
@@ -377,6 +384,7 @@ public class HomeService {
         data.put("id", news.getId());
         data.put("title", news.getTitle());
         data.put("author", news.getAuthor());
+        data.put("description", news.getDescription());
         data.put("content", news.getContent());
         data.put("tags", parseTagsFromString(news.getTags()));
         data.put("status", news.getStatus());
@@ -398,6 +406,7 @@ public class HomeService {
         
         String title = (String) data.get("title");
         String author = (String) data.get("author");
+        String description = data.get("description") != null ? (String) data.get("description") : null;
         String content = (String) data.get("content");
         String tags = convertTagsToString(data.get("tags"));
         String status = data.get("status") != null ? (String) data.get("status") : "draft";
@@ -408,13 +417,14 @@ public class HomeService {
             processedContent = FileUploadUtil.processHtmlImages(content);
         }
         
-        HomeNews news = new HomeNews(title, author, processedContent, tags, status);
+        HomeNews news = new HomeNews(title, author, description, processedContent, tags, status);
         news = newsRepository.save(news);
         
         Map<String, Object> newsData = new HashMap<>();
         newsData.put("id", news.getId());
         newsData.put("title", news.getTitle());
         newsData.put("author", news.getAuthor());
+        newsData.put("description", news.getDescription());
         newsData.put("content", news.getContent());
         newsData.put("tags", parseTagsFromString(news.getTags()));
         newsData.put("status", news.getStatus());
@@ -448,6 +458,9 @@ public class HomeService {
         if (data.containsKey("author")) {
             news.setAuthor((String) data.get("author"));
         }
+        if (data.containsKey("description")) {
+            news.setDescription(data.get("description") != null ? (String) data.get("description") : null);
+        }
         if (data.containsKey("content")) {
             String content = (String) data.get("content");
             // 处理内容中的Base64图片，转换为文件
@@ -469,6 +482,7 @@ public class HomeService {
         newsData.put("id", news.getId());
         newsData.put("title", news.getTitle());
         newsData.put("author", news.getAuthor());
+        newsData.put("description", news.getDescription());
         newsData.put("content", news.getContent());
         newsData.put("tags", parseTagsFromString(news.getTags()));
         newsData.put("status", news.getStatus());
@@ -527,6 +541,7 @@ public class HomeService {
             Map<String, Object> item = new HashMap<>();
             item.put("id", a.getId());
             item.put("title", a.getTitle());
+            item.put("description", a.getDescription());
             item.put("content", a.getContent());
             item.put("status", a.getStatus());
             item.put("publishTime", a.getPublishTime() != null ? a.getPublishTime().toString() : null);
@@ -560,7 +575,10 @@ public class HomeService {
         Map<String, Object> data = new HashMap<>();
         data.put("id", announcement.getId());
         data.put("title", announcement.getTitle());
+        data.put("description", announcement.getDescription());
         data.put("content", announcement.getContent());
+        data.put("attachmentUrl", announcement.getAttachmentUrl());
+        data.put("attachmentName", announcement.getAttachmentName());
         data.put("status", announcement.getStatus());
         data.put("publishTime", announcement.getPublishTime() != null ? announcement.getPublishTime().toString() : null);
         data.put("createdAt", announcement.getCreatedAt());
@@ -575,10 +593,11 @@ public class HomeService {
      * 添加公告
      */
     @Transactional
-    public Map<String, Object> addAnnouncement(Map<String, Object> data) throws IOException {
+    public Map<String, Object> addAnnouncement(Map<String, Object> data, org.springframework.web.multipart.MultipartFile attachmentFile) throws IOException {
         Map<String, Object> result = new HashMap<>();
         
         String title = (String) data.get("title");
+        String description = data.get("description") != null ? (String) data.get("description") : null;
         String content = (String) data.get("content");
         String status = data.get("status") != null ? (String) data.get("status") : "draft";
         
@@ -588,13 +607,33 @@ public class HomeService {
             processedContent = FileUploadUtil.processHtmlImages(content);
         }
         
-        HomeAnnouncement announcement = new HomeAnnouncement(title, processedContent, status);
+        // 处理附件上传
+        String attachmentUrl = null;
+        String attachmentName = null;
+        if (attachmentFile != null && !attachmentFile.isEmpty()) {
+            // 验证文件类型：只允许PDF
+            String originalFilename = attachmentFile.getOriginalFilename();
+            if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".pdf")) {
+                result.put("success", false);
+                result.put("message", "公告附件仅支持PDF格式");
+                return result;
+            }
+            attachmentUrl = FileUploadUtil.saveFile(attachmentFile);
+            attachmentName = attachmentFile.getOriginalFilename();
+        }
+        
+        HomeAnnouncement announcement = new HomeAnnouncement(title, description, processedContent, status);
+        announcement.setAttachmentUrl(attachmentUrl);
+        announcement.setAttachmentName(attachmentName);
         announcement = announcementRepository.save(announcement);
         
         Map<String, Object> announcementData = new HashMap<>();
         announcementData.put("id", announcement.getId());
         announcementData.put("title", announcement.getTitle());
+        announcementData.put("description", announcement.getDescription());
         announcementData.put("content", announcement.getContent());
+        announcementData.put("attachmentUrl", announcement.getAttachmentUrl());
+        announcementData.put("attachmentName", announcement.getAttachmentName());
         announcementData.put("status", announcement.getStatus());
         announcementData.put("publishTime", announcement.getPublishTime() != null ? announcement.getPublishTime().toString() : null);
         announcementData.put("createdAt", announcement.getCreatedAt());
@@ -610,7 +649,7 @@ public class HomeService {
      * 更新公告
      */
     @Transactional
-    public Map<String, Object> updateAnnouncement(Long id, Map<String, Object> data) throws IOException {
+    public Map<String, Object> updateAnnouncement(Long id, Map<String, Object> data, org.springframework.web.multipart.MultipartFile attachmentFile) throws IOException {
         Map<String, Object> result = new HashMap<>();
         
         HomeAnnouncement announcement = announcementRepository.findById(id).orElse(null);
@@ -622,6 +661,9 @@ public class HomeService {
         
         if (data.containsKey("title")) {
             announcement.setTitle((String) data.get("title"));
+        }
+        if (data.containsKey("description")) {
+            announcement.setDescription(data.get("description") != null ? (String) data.get("description") : null);
         }
         if (data.containsKey("content")) {
             String content = (String) data.get("content");
@@ -635,12 +677,48 @@ public class HomeService {
             announcement.setStatus((String) data.get("status"));
         }
         
+        // 处理附件上传（如果有新附件，则更新；如果数据中包含删除标记，则删除）
+        if (attachmentFile != null && !attachmentFile.isEmpty()) {
+            // 验证文件类型：只允许PDF
+            String originalFilename = attachmentFile.getOriginalFilename();
+            if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".pdf")) {
+                result.put("success", false);
+                result.put("message", "公告附件仅支持PDF格式");
+                return result;
+            }
+            // 删除旧附件文件
+            if (announcement.getAttachmentUrl() != null && !announcement.getAttachmentUrl().isEmpty()) {
+                try {
+                    FileUploadUtil.deleteFile(announcement.getAttachmentUrl());
+                } catch (Exception e) {
+                    // 忽略删除旧文件失败的错误
+                }
+            }
+            // 保存新附件
+            announcement.setAttachmentUrl(FileUploadUtil.saveFile(attachmentFile));
+            announcement.setAttachmentName(attachmentFile.getOriginalFilename());
+        } else if (data.containsKey("attachmentUrl") && data.get("attachmentUrl") == null) {
+            // 如果数据中明确设置为null，表示删除附件
+            if (announcement.getAttachmentUrl() != null && !announcement.getAttachmentUrl().isEmpty()) {
+                try {
+                    FileUploadUtil.deleteFile(announcement.getAttachmentUrl());
+                } catch (Exception e) {
+                    // 忽略删除文件失败的错误
+                }
+            }
+            announcement.setAttachmentUrl(null);
+            announcement.setAttachmentName(null);
+        }
+        
         announcement = announcementRepository.save(announcement);
         
         Map<String, Object> announcementData = new HashMap<>();
         announcementData.put("id", announcement.getId());
         announcementData.put("title", announcement.getTitle());
+        announcementData.put("description", announcement.getDescription());
         announcementData.put("content", announcement.getContent());
+        announcementData.put("attachmentUrl", announcement.getAttachmentUrl());
+        announcementData.put("attachmentName", announcement.getAttachmentName());
         announcementData.put("status", announcement.getStatus());
         announcementData.put("publishTime", announcement.getPublishTime() != null ? announcement.getPublishTime().toString() : null);
         announcementData.put("createdAt", announcement.getCreatedAt());
