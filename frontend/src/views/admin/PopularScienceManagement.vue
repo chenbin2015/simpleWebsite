@@ -455,6 +455,7 @@ import { Plus, Upload, Picture, Delete } from '@element-plus/icons-vue'
 import VuePictureCropper, { cropper } from 'vue-picture-cropper'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import * as popularScienceApi from '@/services/popularScienceApi'
+import { buildImageUrl, extractBackendPath } from '@/utils/url'
 import 'cropperjs/dist/cropper.css'
 
 // Tab切换
@@ -472,18 +473,7 @@ const bannerPictureCropperRef = ref(null)
 const bannerCropperReady = ref(false)
 
 // 构建完整的图片URL
-const getBannerImageUrl = (imageUrl) => {
-  if (!imageUrl) return ''
-  // 如果是完整URL或base64，直接返回
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
-    return imageUrl
-  }
-  // 如果是相对路径，需要加上后端基础URL
-  if (imageUrl.startsWith('/')) {
-    return `http://localhost:8080${imageUrl}`
-  }
-  return `http://localhost:8080/${imageUrl}`
-}
+const getBannerImageUrl = buildImageUrl
 
 // 加载Banner图
 const loadBanner = async () => {
@@ -646,18 +636,7 @@ const handleBannerBeforeRemove = async (file) => {
 const carouselList = ref([])
 
 // 构建完整的图片URL
-const getCarouselImageUrl = (imageUrl) => {
-  if (!imageUrl) return ''
-  // 如果是完整URL或base64，直接返回
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
-    return imageUrl
-  }
-  // 如果是相对路径，需要加上后端基础URL
-  if (imageUrl.startsWith('/')) {
-    return `http://localhost:8080${imageUrl}`
-  }
-  return `http://localhost:8080/${imageUrl}`
-}
+const getCarouselImageUrl = buildImageUrl
 
 // 加载轮播图列表
 const loadCarousel = async () => {
@@ -712,10 +691,7 @@ const handleCarouselEdit = (row, index) => {
   
   // 编辑时只显示当前这一条轮播图
   const originalImageUrl = row.image
-  let backendImageUrl = originalImageUrl
-  if (originalImageUrl && originalImageUrl.startsWith('http://localhost:8080/')) {
-    backendImageUrl = originalImageUrl.replace('http://localhost:8080', '')
-  }
+  let backendImageUrl = extractBackendPath(originalImageUrl)
   
   carouselImageList.value = [{
     uid: row.id,
@@ -912,9 +888,9 @@ const handleCarouselSubmit = async () => {
           // 如果是编辑时保留的服务器图片（有backendUrl），使用后端路径
           if (editedItem.backendUrl && !editedItem.url.startsWith('data:image/')) {
             imageUrl = editedItem.backendUrl
-          } else if (editedItem.url.startsWith('http://localhost:8080/')) {
+          } else if (!editedItem.url.startsWith('data:image/')) {
             // 如果是完整URL但不是Base64，提取后端路径
-            imageUrl = editedItem.url.replace('http://localhost:8080', '')
+            imageUrl = extractBackendPath(editedItem.url)
           }
           // 如果是Base64，直接使用
           
@@ -926,10 +902,7 @@ const handleCarouselSubmit = async () => {
           }
         } else {
           // 保留其他轮播图
-          let imageUrl = item.image
-          if (imageUrl && imageUrl.startsWith('http://localhost:8080/')) {
-            imageUrl = imageUrl.replace('http://localhost:8080', '')
-          }
+          let imageUrl = extractBackendPath(item.image)
           return {
             image: imageUrl,
             title: item.title || '',
@@ -944,8 +917,8 @@ const handleCarouselSubmit = async () => {
         let imageUrl = item.url
         if (item.backendUrl && !item.url.startsWith('data:image/')) {
           imageUrl = item.backendUrl
-        } else if (item.url.startsWith('http://localhost:8080/')) {
-          imageUrl = item.url.replace('http://localhost:8080', '')
+        } else if (!item.url.startsWith('data:image/')) {
+          imageUrl = extractBackendPath(item.url)
         }
         
         return {
@@ -958,10 +931,7 @@ const handleCarouselSubmit = async () => {
       
       // 合并现有轮播图
       const existingCarouselData = carouselList.value.map(item => {
-        let imageUrl = item.image
-        if (imageUrl && imageUrl.startsWith('http://localhost:8080/')) {
-          imageUrl = imageUrl.replace('http://localhost:8080', '')
-        }
+        let imageUrl = extractBackendPath(item.image)
         return {
           image: imageUrl,
           title: item.title || '',

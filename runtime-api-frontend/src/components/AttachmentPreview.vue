@@ -56,6 +56,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { Document, Download, Loading, WarningFilled } from '@element-plus/icons-vue'
 import { ElButton, ElIcon, ElMessage } from 'element-plus'
 import mammoth from 'mammoth'
+import { buildImageUrl } from '@/utils/url'
 
 const props = defineProps({
   attachmentUrl: {
@@ -74,18 +75,7 @@ const loading = ref(false)
 const wordContainer = ref(null)
 
 // 获取完整的文件URL
-const getFullUrl = (url) => {
-  if (!url) return ''
-  
-  // 如果已经是完整URL，直接返回
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url
-  }
-  
-  // 如果是相对路径，拼接后端基础URL
-  const baseUrl = 'http://localhost:8080'
-  return url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`
-}
+const getFullUrl = buildImageUrl
 
 // 根据文件名判断文件类型
 const fileType = computed(() => {

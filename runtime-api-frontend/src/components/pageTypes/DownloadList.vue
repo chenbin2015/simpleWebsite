@@ -114,6 +114,7 @@
   import { ElMessage } from 'element-plus'
   import { getModuleDownloadList } from '@/services/publicModuleApi'
   import { getMenuById } from '@/services/publicMenuApi'
+  import { getBackendBaseUrl } from '@/config/api'
   
   const props = defineProps({
     id: {
@@ -286,9 +287,10 @@
     }
   
     // 构建文件URL（假设文件服务器在 /file/upload/ 路径下）
+    const baseUrl = getBackendBaseUrl()
     const fileUrl = item.filePath.startsWith('http') 
       ? item.filePath 
-      : `http://localhost:8080/file${item.filePath}`
+      : `${baseUrl}/file${item.filePath}`
     
     const link = document.createElement('a')
     link.href = fileUrl

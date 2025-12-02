@@ -54,6 +54,15 @@ public class PublicModuleController {
     }
     
     /**
+     * 获取模块新闻详情
+     * @param id - 新闻ID
+     */
+    @GetMapping("/news/{id}")
+    public Map<String, Object> getNewsById(@PathVariable Long id) {
+        return moduleNewsService.getNewsById(id);
+    }
+    
+    /**
      * 获取菜单的产品列表
      * @param menuId - 菜单ID
      */

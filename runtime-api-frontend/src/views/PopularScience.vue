@@ -59,6 +59,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AnnouncementList from '@/components/AnnouncementList.vue'
 import { getBanner, getCarouselList, getArticleList, getAnnouncementList } from '@/services/publicPopularScienceApi'
+import { buildImageUrl } from '@/utils/url'
 
 const router = useRouter()
 
@@ -123,13 +124,7 @@ const loadBanner = async () => {
       const imageUrl = response.data.data.imageUrl
       if (imageUrl) {
         // 构建完整URL
-        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-          bannerImage.value = imageUrl
-        } else if (imageUrl.startsWith('/')) {
-          bannerImage.value = `http://localhost:8080${imageUrl}`
-        } else {
-          bannerImage.value = `http://localhost:8080/${imageUrl}`
-        }
+        bannerImage.value = buildImageUrl(imageUrl)
       }
     }
   } catch (error) {
@@ -146,14 +141,7 @@ const loadCarousel = async () => {
       const items = response.data.data || []
       carouselItems.value = items.map(item => {
         // 构建完整图片URL
-        let imageUrl = item.image
-        if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-          if (imageUrl.startsWith('/')) {
-            imageUrl = `http://localhost:8080${imageUrl}`
-          } else {
-            imageUrl = `http://localhost:8080/${imageUrl}`
-          }
-        }
+        let imageUrl = buildImageUrl(item.image)
         
         return {
           id: String(item.id),

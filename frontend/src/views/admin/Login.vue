@@ -54,7 +54,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
-import axios from 'axios'
+import { createJsonClient } from '@/services/apiClient'
 
 const router = useRouter()
 const loginFormRef = ref(null)
@@ -84,15 +84,16 @@ const handleLogin = async () => {
     try {
       loading.value = true
       
-      const response = await axios.post('http://localhost:8080/api/user/login', {
+      const loginClient = createJsonClient('/user')
+      const response = await loginClient.post('/login', {
         username: loginForm.username,
         password: loginForm.password
       })
       
-      if (response.data.success) {
+      if (response.success) {
         // 保存token
-        if (response.data.token) {
-          localStorage.setItem('token', response.data.token)
+        if (response.token) {
+          localStorage.setItem('token', response.token)
         }
         
         ElMessage.success('登录成功')
@@ -100,11 +101,11 @@ const handleLogin = async () => {
         // 跳转到管理后台首页
         router.push('/admin/home')
       } else {
-        ElMessage.error(response.data.message || '登录失败')
+        ElMessage.error(response.message || '登录失败')
       }
     } catch (error) {
       console.error('登录失败:', error)
-      const message = error.response?.data?.message || '登录失败，请检查用户名和密码'
+      const message = error.message || '登录失败，请检查用户名和密码'
       ElMessage.error(message)
     } finally {
       loading.value = false

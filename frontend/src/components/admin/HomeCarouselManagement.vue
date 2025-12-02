@@ -181,6 +181,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import VuePictureCropper, { cropper } from 'vue-picture-cropper'
 import * as homeApi from '@/services/homeApi'
+import { buildImageUrl } from '@/utils/url'
 import 'cropperjs/dist/cropper.css'
 
 const carouselList = ref([])
@@ -228,18 +229,7 @@ const pictureCropperRef = ref(null)
 const cropperReady = ref(false)
 
 // 构建完整的图片URL
-const getImageUrl = (imageUrl) => {
-  if (!imageUrl) return ''
-  // 如果是完整URL或base64，直接返回
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
-    return imageUrl
-  }
-  // 如果是相对路径，需要加上后端基础URL
-  if (imageUrl.startsWith('/')) {
-    return `http://localhost:8080${imageUrl}`
-  }
-  return `http://localhost:8080/${imageUrl}`
-}
+const getImageUrl = buildImageUrl
 
 const handleCarouselAdd = () => {
   carouselDialogTitle.value = '添加轮播图'

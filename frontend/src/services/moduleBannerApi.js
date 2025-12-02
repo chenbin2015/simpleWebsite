@@ -1,63 +1,10 @@
-import axios from 'axios'
-import { ElMessage } from 'element-plus'
-import router from '@/router'
-import { clearAuthData } from '@/utils/auth'
+import { createJsonClient, createUploadClient } from './apiClient'
 
-// 配置 axios 实例（用于文件上传）
-const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api/module-banner',
-  timeout: 30000, // 文件上传可能需要更长时间
-  headers: {
-    'Content-Type': 'multipart/form-data'
-  }
-})
+// 创建 JSON 请求客户端
+const jsonClient = createJsonClient('/module-banner')
 
-// JSON请求的axios实例
-const jsonClient = axios.create({
-  baseURL: 'http://localhost:8080/api/module-banner',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-// 请求拦截器（可以添加 token 等）
-const requestInterceptor = (config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-}
-
-apiClient.interceptors.request.use(requestInterceptor, error => Promise.reject(error))
-jsonClient.interceptors.request.use(requestInterceptor, error => Promise.reject(error))
-
-// 响应拦截器
-const responseInterceptor = {
-  success: (response) => response.data,
-  error: (error) => {
-    console.error('Module Banner API Error:', error)
-    
-    if (error.response && error.response.status === 401) {
-      ElMessage.error('登录已过期，请重新登录')
-      clearAuthData()
-      router.push('/admin/login')
-      return Promise.reject(error)
-    }
-    
-    if (error.response) {
-      const message = error.response.data?.message || error.response.data?.error || '请求失败'
-      ElMessage.error(message)
-      return Promise.reject(error.response.data)
-    }
-    
-    return Promise.reject(error)
-  }
-}
-
-apiClient.interceptors.response.use(responseInterceptor.success, responseInterceptor.error)
-jsonClient.interceptors.response.use(responseInterceptor.success, responseInterceptor.error)
+// 创建文件上传客户端
+const apiClient = createUploadClient('/module-banner', 30000)
 
 // ========== Banner管理 ==========
 

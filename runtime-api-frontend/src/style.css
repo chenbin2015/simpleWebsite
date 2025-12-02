@@ -62,7 +62,6 @@ button:focus-visible {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
-  text-align: center;
 }
 
 /* 控制 tooltip 只显示一个 - 隐藏隐藏状态的 tooltip */
@@ -84,4 +83,94 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+/* Quill 编辑器样式 - 确保富文本内容正确显示 */
+/* 文本对齐样式 */
+.ql-align-center {
+  text-align: center !important;
+}
+
+.ql-align-right {
+  text-align: right !important;
+}
+
+.ql-align-left {
+  text-align: left !important;
+}
+
+.ql-align-justify {
+  text-align: justify !important;
+}
+
+/* 字体大小样式 */
+.ql-size-small {
+  font-size: 0.75em;
+}
+
+.ql-size-large {
+  font-size: 1.5em;
+}
+
+.ql-size-huge {
+  font-size: 2.5em;
+}
+
+/* 列表样式 */
+.ql-list {
+  list-style-type: none;
+  padding-left: 1.5em;
+}
+
+.ql-list.ql-bullet {
+  list-style-type: disc;
+}
+
+.ql-list.ql-ordered {
+  list-style-type: decimal;
+}
+
+/* 代码块样式 */
+.ql-code-block-container {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 12px;
+  margin: 10px 0;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  overflow-x: auto;
+}
+
+/* 引用样式 */
+.ql-indent-1 {
+  padding-left: 3em;
+}
+
+.ql-indent-2 {
+  padding-left: 6em;
+}
+
+.ql-indent-3 {
+  padding-left: 9em;
+}
+
+/* 确保 Quill 内容区域的基本样式 */
+.ql-editor {
+  line-height: 1.6;
+}
+
+.ql-editor p,
+.ql-editor ol,
+.ql-editor ul {
+  margin: 0.5em 0;
+}
+
+.ql-editor img {
+  max-width: 100%;
+  height: auto;
+}
+
+.ql-editor iframe {
+  max-width: 100%;
 }

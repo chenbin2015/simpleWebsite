@@ -5,9 +5,10 @@ const bcrypt = require('bcrypt');
 
 // 数据库配置
 const dbConfig = {
-  host: 'localhost',
+  host: '116.62.13.27',  // 使用 IPv4 地址，避免 IPv6 连接问题
   user: 'root',
-  password: 'root123456',
+  port: 8024,
+  password: 'k9#Qz$mR!pX2@L8',
   multipleStatements: true // 允许执行多条SQL语句
 };
 
@@ -142,7 +143,7 @@ async function createAdminUser(connection) {
 // 初始化系统配置
 async function initSystemConfig(connection) {
   try {
-    const baseUrl = 'http://localhost:8080';
+    const baseUrl = 'http://116.62.13.27:8084';
     
     // 检查配置是否已存在
     const [existingConfigs] = await connection.query(

@@ -87,6 +87,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { getContact, getLinkList, getBasic } from '@/services/publicFooterApi'
+import { buildImageUrl } from '@/utils/url'
 
 const contactData = ref(null)
 const linksData = ref([])
@@ -112,18 +113,7 @@ const groupedLinks = computed(() => {
 })
 
 // 获取完整的图片URL
-const getFullImageUrl = (url) => {
-  if (!url) return ''
-  
-  // 如果已经是完整URL，直接返回
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url
-  }
-  
-  // 如果是相对路径，拼接后端基础URL
-  const baseUrl = 'http://localhost:8080'
-  return url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`
-}
+const getFullImageUrl = buildImageUrl
 
 // 加载Footer数据
 const loadFooterData = async () => {

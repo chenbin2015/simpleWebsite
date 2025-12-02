@@ -1,8 +1,9 @@
 import axios from 'axios'
+import { getApiBaseUrl } from '@/config/api'
 
 // 配置 axios 实例（用于公开API，不需要token）
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api/public/module',
+  baseURL: `${getApiBaseUrl()}/public/module`,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
@@ -23,6 +24,14 @@ export async function getModuleBanner(category) {
  */
 export async function getModuleNewsList(menuId) {
   return await apiClient.get(`/news/menu/${menuId}`)
+}
+
+/**
+ * 获取模块新闻详情
+ * @param {number} id - 新闻ID
+ */
+export async function getModuleNewsById(id) {
+  return await apiClient.get(`/news/${id}`)
 }
 
 /**

@@ -65,6 +65,38 @@ public class ModuleNewsService {
     }
     
     /**
+     * 获取单个模块新闻详情
+     */
+    public Map<String, Object> getNewsById(Long id) {
+        Map<String, Object> result = new HashMap<>();
+        
+        ModuleNews news = moduleNewsRepository.findByIdAndDeletedFalse(id).orElse(null);
+        if (news == null) {
+            result.put("success", false);
+            result.put("message", "新闻不存在");
+            return result;
+        }
+        
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", news.getId());
+        data.put("title", news.getTitle());
+        data.put("author", news.getAuthor());
+        data.put("content", news.getContent());
+        data.put("tags", parseTagsFromString(news.getTags()));
+        data.put("summary", news.getSummary());
+        data.put("status", news.getStatus());
+        data.put("publishTime", news.getPublishTime() != null ? news.getPublishTime().toString() : null);
+        data.put("date", news.getPublishTime() != null ? news.getPublishTime().toLocalDate().toString() : 
+                 (news.getCreatedAt() != null ? news.getCreatedAt().toLocalDate().toString() : null));
+        data.put("createdAt", news.getCreatedAt());
+        data.put("updatedAt", news.getUpdatedAt());
+        
+        result.put("success", true);
+        result.put("data", data);
+        return result;
+    }
+    
+    /**
      * 添加新闻
      */
     @Transactional

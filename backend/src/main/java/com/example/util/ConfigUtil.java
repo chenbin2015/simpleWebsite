@@ -50,10 +50,10 @@ public class ConfigUtil {
     /**
      * 获取基础URL（用于拼接完整的文件访问URL）
      * 
-     * @return 基础URL，例如：http://localhost:8080
+     * @return 基础URL，例如：http://116.62.13.27:8084
      */
     public static String getBaseUrl() {
-        return getConfigValue("base_url", "http://localhost:8080");
+        return getConfigValue("base_url", "http://116.62.13.27:8084");
     }
     
     /**
@@ -62,7 +62,7 @@ public class ConfigUtil {
      * 否则，拼接基础URL
      * 
      * @param relativePath 相对路径，例如：upload/20251201/xxx.jpg
-     * @return 完整URL，例如：http://localhost:8080/upload/20251201/xxx.jpg
+     * @return 完整URL，例如：http://116.62.13.27:8084/upload/20251201/xxx.jpg
      */
     public static String buildFullUrl(String relativePath) {
         if (relativePath == null || relativePath.isEmpty()) {

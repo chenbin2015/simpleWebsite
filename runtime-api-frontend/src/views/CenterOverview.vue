@@ -155,6 +155,7 @@ import {
   getOrganization,
   getLaboratoryList
 } from '@/services/publicCenterOverviewApi'
+import { buildImageUrl } from '@/utils/url'
 
 const router = useRouter()
 
@@ -237,16 +238,7 @@ const loadLaboratories = async () => {
 
 // 获取图片URL
 const getImageUrl = (imageUrl) => {
-  if (!imageUrl) return ''
-  // 如果是完整URL，直接返回
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-    return imageUrl
-  }
-  // 如果是相对路径，加上基础URL
-  if (imageUrl.startsWith('/')) {
-    return `http://localhost:8080${imageUrl}`
-  }
-  return `http://localhost:8080/${imageUrl}`
+  return buildImageUrl(imageUrl)
 }
 
 // 获取视频URL
@@ -397,6 +389,23 @@ onMounted(() => {
   color: #606266;
   line-height: 1.8;
   font-size: 16px;
+}
+
+/* Quill 样式支持 */
+.section-content :deep(.ql-align-center) {
+  text-align: center !important;
+}
+
+.section-content :deep(.ql-align-right) {
+  text-align: right !important;
+}
+
+.section-content :deep(.ql-align-left) {
+  text-align: left !important;
+}
+
+.section-content :deep(.ql-align-justify) {
+  text-align: justify !important;
 }
 
 .section-content p {

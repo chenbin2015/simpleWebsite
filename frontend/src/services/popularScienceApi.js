@@ -1,55 +1,7 @@
-import axios from 'axios'
-import { ElMessage } from 'element-plus'
-import router from '@/router'
-import { clearAuthData } from '@/utils/auth'
+import { createJsonClient } from './apiClient'
 
-// 配置 axios 实例
-const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api/popular-science',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-// 请求拦截器
-apiClient.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  error => {
-    return Promise.reject(error)
-  }
-)
-
-// 响应拦截器
-apiClient.interceptors.response.use(
-  response => {
-    return response.data
-  },
-  error => {
-    console.error('API Error:', error)
-    
-    if (error.response && error.response.status === 401) {
-      ElMessage.error('登录已过期，请重新登录')
-      clearAuthData()
-      router.push('/admin/login')
-      return Promise.reject(error)
-    }
-    
-    if (error.response) {
-      const message = error.response.data?.message || error.response.data?.error || '请求失败'
-      ElMessage.error(message)
-      return Promise.reject(error.response.data)
-    }
-    
-    return Promise.reject(error)
-  }
-)
+// 创建 JSON 请求客户端
+const apiClient = createJsonClient('/popular-science')
 
 // ========== Banner图管理 ==========
 

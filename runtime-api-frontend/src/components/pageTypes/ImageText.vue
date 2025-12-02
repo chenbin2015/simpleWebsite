@@ -97,6 +97,37 @@
   
   .rich-content {
     padding: 10px 0;
+    font-size: 16px;
+    line-height: 1.8;
+    color: #606266;
+  }
+  
+  /* Quill 样式支持 */
+  .rich-content :deep(.ql-align-center) {
+    text-align: center !important;
+  }
+  
+  .rich-content :deep(.ql-align-right) {
+    text-align: right !important;
+  }
+  
+  .rich-content :deep(.ql-align-left) {
+    text-align: left !important;
+  }
+  
+  .rich-content :deep(.ql-align-justify) {
+    text-align: justify !important;
+  }
+  
+  .rich-content :deep(p) {
+    margin: 0 0 15px 0;
+  }
+  
+  .rich-content :deep(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin: 20px 0;
   }
   </style>
   

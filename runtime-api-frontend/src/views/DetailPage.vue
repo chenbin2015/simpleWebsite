@@ -79,6 +79,7 @@ import AttachmentPreview from '@/components/AttachmentPreview.vue'
 import { fetchMockData } from '@/services/mockClient'
 import { getNewsById as getHomeNewsById, getAnnouncementById as getHomeAnnouncementById } from '@/services/publicHomeApi'
 import { getArticleById as getPopularScienceArticleById, getAnnouncementById as getPopularScienceAnnouncementById } from '@/services/publicPopularScienceApi'
+import { getModuleNewsById } from '@/services/publicModuleApi'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
@@ -95,17 +96,14 @@ onMounted(async () => {
     loading.value = true
     error.value = null
     
-    // 根据 from 参数决定使用哪个 API
-    if (from.value === 'home' || from.value === 'popular-science') {
-      await loadFromApi()
-    } else {
-      // 其他来源，暂时使用 mock 数据
-      await loadFromMock()
-    }
+    console.log('详情页加载:', { type: type.value, id: id.value, from: from.value })
+    
+    // 直接用 id 从 API 加载数据
+    await loadFromApi()
   } catch (err) {
     error.value = err.message || '加载详情失败'
     console.error('加载详情失败:', err)
-    ElMessage.error('加载详情失败')
+    ElMessage.error('加载详情失败: ' + (err.message || '未知错误'))
   } finally {
     loading.value = false
   }
@@ -117,8 +115,17 @@ const loadFromApi = async () => {
     let response
     
     // 根据 from 参数选择不同的 API
-    if (from.value === 'popular-science') {
+    // 模块新闻的 from 格式：experiment-teaching-{id}、experiment-resources-{id} 等
+    // 科普教育的 from：popular-science 或 popular-science-{id}
+    // 首页的 from：home 或其他
+    
+    // 判断是否是模块新闻（from 包含模块类型前缀）
+    const moduleTypes = ['experiment-teaching', 'experiment-resources', 'construction-results', 'safety-management']
+    const isModuleNews = moduleTypes.some(moduleType => from.value?.startsWith(moduleType))
+    
+    if (from.value === 'popular-science' || from.value?.startsWith('popular-science')) {
       // 科普教育的 API
+      console.log('使用科普教育 API，id:', id.value)
       if (type.value === 'news') {
         response = await getPopularScienceArticleById(id.value)
       } else if (type.value === 'announcement') {
@@ -126,8 +133,13 @@ const loadFromApi = async () => {
       } else {
         throw new Error('不支持的类型，只支持 news 或 announcement')
       }
+    } else if (isModuleNews && type.value === 'news') {
+      // 模块新闻的 API（只支持 news 类型）
+      console.log('使用模块新闻 API，id:', id.value, 'from:', from.value)
+      response = await getModuleNewsById(id.value)
     } else {
-      // 首页的 API（默认）
+      // 首页的 API（默认，包括 home 等）
+      console.log('使用首页 API，id:', id.value, 'type:', type.value)
       if (type.value === 'news') {
         response = await getHomeNewsById(id.value)
       } else if (type.value === 'announcement') {
@@ -137,6 +149,8 @@ const loadFromApi = async () => {
       }
     }
     
+    console.log('API 响应:', response.data)
+    
     if (response.data.success && response.data.data) {
       const data = response.data.data
       
@@ -144,7 +158,10 @@ const loadFromApi = async () => {
       if (type.value === 'news') {
         // 解析日期
         let date = ''
-        if (data.publishTime) {
+        if (data.date) {
+          // 模块新闻可能直接返回 date 字段
+          date = data.date
+        } else if (data.publishTime) {
           date = data.publishTime.split('T')[0]
         } else if (data.createdAt) {
           date = data.createdAt.split('T')[0]
@@ -154,7 +171,8 @@ const loadFromApi = async () => {
           id: data.id,
           title: data.title,
           author: data.author || '',
-          description: data.description || '',
+          // 模块新闻使用 summary，首页新闻使用 description
+          description: data.description || data.summary || '',
           content: data.content || '',
           date: date,
           publishTime: data.publishTime,
@@ -318,6 +336,23 @@ const loadFromMock = async () => {
   font-size: 16px;
   line-height: 1.8;
   color: #606266;
+}
+
+/* Quill 样式支持 */
+.detail-html-content :deep(.ql-align-center) {
+  text-align: center !important;
+}
+
+.detail-html-content :deep(.ql-align-right) {
+  text-align: right !important;
+}
+
+.detail-html-content :deep(.ql-align-left) {
+  text-align: left !important;
+}
+
+.detail-html-content :deep(.ql-align-justify) {
+  text-align: justify !important;
 }
 
 .detail-html-content :deep(p) {

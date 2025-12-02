@@ -162,6 +162,7 @@ import DownloadListManagement from '@/components/admin/DownloadListManagement.vu
 import BannerManagement from '@/components/admin/BannerManagement.vue'
 import * as moduleBannerApi from '@/services/moduleBannerApi'
 import * as menuApi from '@/services/menuApi'
+import { buildImageUrl } from '@/utils/url'
 
 // 接收路由参数
 const props = defineProps({
@@ -256,18 +257,7 @@ const handleOpenBannerDialog = async (category) => {
   currentBannerCategory.value = category
   
   // 构建完整的图片/视频URL
-  const buildFullUrl = (url) => {
-    if (!url) return ''
-    // 如果是完整URL或base64，直接返回
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-      return url
-    }
-    // 如果是相对路径，需要加上后端基础URL
-    if (url.startsWith('/')) {
-      return `http://localhost:8080${url}`
-    }
-    return `http://localhost:8080/${url}`
-  }
+  const buildFullUrl = buildImageUrl
   
   // 从后端加载Banner数据
   try {
@@ -359,10 +349,7 @@ const handleBannerDelete = async ({ type }) => {
         if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
           return url
         }
-        if (url.startsWith('/')) {
-          return `http://localhost:8080${url}`
-        }
-        return `http://localhost:8080/${url}`
+        return buildImageUrl(url)
       }
       
       // 重新加载Banner数据（更新对话框中的显示）

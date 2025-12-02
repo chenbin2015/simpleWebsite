@@ -9,3 +9,4 @@ public interface CenterOverviewDetailRepository extends JpaRepository<CenterOver
     // 详情只有一条记录（单例模式）
 }
 
+

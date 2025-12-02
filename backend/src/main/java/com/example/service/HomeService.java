@@ -3,6 +3,7 @@ package com.example.service;
 import com.example.entity.*;
 import com.example.repository.*;
 import com.example.util.FileUploadUtil;
+import com.example.util.ConfigUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -222,8 +223,8 @@ public class HomeService {
                     // Base64格式，转换为文件保存
                     finalImageUrl = FileUploadUtil.saveBase64Image(image);
                 } else {
-                    // 普通URL，直接使用
-                    finalImageUrl = image.trim();
+                    // 普通URL，需要处理 localhost:8080 的情况
+                    finalImageUrl = normalizeImageUrl(image.trim());
                 }
             }
             
@@ -265,8 +266,8 @@ public class HomeService {
                     String finalImageUrl = FileUploadUtil.saveBase64Image(image);
                     carousel.setImage(finalImageUrl);
                 } else {
-                    // 普通URL，直接使用
-                    carousel.setImage(image.trim());
+                    // 普通URL，需要处理 localhost:8080 的情况
+                    carousel.setImage(normalizeImageUrl(image.trim()));
                 }
             }
         }
@@ -752,6 +753,35 @@ public class HomeService {
         result.put("success", true);
         result.put("message", "删除成功");
         return result;
+    }
+    
+    /**
+     * 规范化图片URL
+     * 如果URL包含 localhost:8080，提取相对路径并使用正确的base_url重新构建
+     * 
+     * @param imageUrl 原始图片URL
+     * @return 规范化后的URL
+     */
+    private String normalizeImageUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            return imageUrl;
+        }
+        
+        // 如果已经是完整URL（http://或https://开头）
+        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+            // 检查是否包含 localhost:8080
+            if (imageUrl.contains("localhost:8080")) {
+                // 提取相对路径
+                String relativePath = imageUrl.replaceFirst("https?://[^/]+", "");
+                // 使用正确的base_url重新构建
+                return ConfigUtil.buildFullUrl(relativePath);
+            }
+            // 如果已经是正确的URL，直接返回
+            return imageUrl;
+        }
+        
+        // 如果是相对路径，使用base_url构建完整URL
+        return ConfigUtil.buildFullUrl(imageUrl);
     }
 }
 

@@ -131,6 +131,7 @@ import VuePictureCropper, { cropper } from 'vue-picture-cropper'
 import 'cropperjs/dist/cropper.css'
 import * as moduleProductApi from '@/services/moduleProductApi'
 import * as menuApi from '@/services/menuApi'
+import { buildImageUrl } from '@/utils/url'
 
 const props = defineProps({
   menu: {
@@ -166,18 +167,7 @@ const pictureCropperRef = ref(null)
 const cropperReady = ref(false)
 
 // 构建完整的图片URL
-const getImageUrl = (imageUrl) => {
-  if (!imageUrl) return ''
-  // 如果是完整URL或base64，直接返回
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
-    return imageUrl
-  }
-  // 如果是相对路径，需要加上后端基础URL
-  if (imageUrl.startsWith('/')) {
-    return `http://localhost:8080${imageUrl}`
-  }
-  return `http://localhost:8080/${imageUrl}`
-}
+const getImageUrl = buildImageUrl
 
 // 根据菜单名称查找数据库菜单ID
 const findMenuIdByName = async (menuName, categoryName) => {

@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # 配置
 SERVER_HOST="116.62.13.27"
-SERVER_PATH="/etc/simpleWebsite"
+SERVER_PATH="/etc/eastSouth/runtime-frontend"
 BUILD_DIR="dist"
 USERNAME="${1:-root}"  # 默认使用 root 用户，可以通过参数传入
 

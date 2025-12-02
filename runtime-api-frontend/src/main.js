@@ -1,6 +1,9 @@
 import { createApp } from 'vue'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+// 引入 Quill 样式，用于正确渲染富文本编辑器生成的内容
+import 'quill/dist/quill.snow.css'
+import './style.css'
 import App from './App.vue'
 import router from './router'
 
