@@ -24,12 +24,12 @@
       <div v-else class="banner-placeholder">
         <span>暂无Banner</span>
       </div>
-      <div class="video-overlay">
+      <!-- <div class="video-overlay">
         <div class="breadcrumb">
           <el-icon><HomeFilled /></el-icon>
           <span>首页 / 中心概况</span>
         </div>
-      </div>
+      </div> -->
     </div>
 
     <!-- 主要内容区域 -->

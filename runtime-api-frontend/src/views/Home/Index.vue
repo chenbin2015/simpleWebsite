@@ -212,7 +212,7 @@ export default {
     },
     async loadAnnouncements() {
       try {
-        const response = await getAnnouncementList({ page: 1, pageSize: 10 })
+        const response = await getAnnouncementList({ page: 1, pageSize: 4 })
         if (response.data.success && response.data.data) {
           this.announcementList = response.data.data.map(announcement => {
             // 优先使用后端的描述字段，如果没有则从内容中提取

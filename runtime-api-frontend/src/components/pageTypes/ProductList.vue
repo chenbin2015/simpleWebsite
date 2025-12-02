@@ -19,7 +19,7 @@
               <el-icon><Search /></el-icon>
             </template>
           </el-input>
-          <el-select
+          <!-- <el-select
             v-model="selectedCategory"
             placeholder="选择分类"
             clearable
@@ -31,7 +31,7 @@
               :label="category"
               :value="category"
             />
-          </el-select>
+          </el-select> -->
           <el-button type="primary" @click="handleSearch">搜索</el-button>
         </div>
   
@@ -67,7 +67,7 @@
                 <div class="product-info">
                   <div class="product-name">{{ item.name }}</div>
                   <div class="product-category">
-                    <el-tag size="small">{{ item.category }}</el-tag>
+                    <el-tag size="small" v-if="item.category">{{ item.category }}</el-tag>
                   </div>
                   <div class="product-description" v-if="item.description">
                     {{ item.description }}
@@ -199,6 +199,7 @@
     total.value = result.length
     const start = (currentPage.value - 1) * pageSize.value
     const end = start + pageSize.value
+    console.log('result:', result)
     return result.slice(start, end)
   })
   
@@ -241,7 +242,8 @@
             image: item.image || item.imageUrl || '',
             category: item.category || '',
             description: item.description || '',
-            specs: item.specs || {}
+            specs: item.specs || {},
+            link: item.link || '' // 保存链接字段
           }
         })
         
@@ -281,8 +283,20 @@
   
   // 查看详情
   const handleViewDetail = (item) => {
-    ElMessage.info('即将跳转到新页面')
-    // 不做任何操作，只显示提示
+    // 如果有链接，优先跳转
+    if (item.link && item.link.trim()) {
+      if (item.link.startsWith('http://') || item.link.startsWith('https://')) {
+        // 外部链接，新窗口打开
+        window.open(item.link, '_blank')
+      } else {
+        // 内部路由，使用 router 跳转
+        router.push(item.link)
+      }
+    } else {
+      // 没有链接，显示详情对话框
+      selectedProduct.value = item
+      detailVisible.value = true
+    }
   }
   
   onMounted(loadData)

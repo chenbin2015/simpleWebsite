@@ -19,7 +19,7 @@
               <el-icon><Search /></el-icon>
             </template>
           </el-input>
-          <el-select
+          <!-- <el-select
             v-model="selectedCategory"
             placeholder="选择分类"
             clearable
@@ -43,7 +43,7 @@
             <el-option label="Word" value="doc" />
             <el-option label="Excel" value="xls" />
             <el-option label="其他" value="other" />
-          </el-select>
+          </el-select> -->
           <el-button type="primary" @click="handleSearch">搜索</el-button>
         </div>
   
@@ -62,11 +62,11 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="category" label="分类" width="120">
+            <!-- <el-table-column prop="category" label="分类" width="120">
               <template #default="{ row }">
                 <el-tag size="small">{{ row.category }}</el-tag>
               </template>
-            </el-table-column>
+            </el-table-column> -->
             <el-table-column prop="size" label="文件大小" width="120" />
             <el-table-column prop="type" label="文件类型" width="100">
               <template #default="{ row }">

@@ -258,7 +258,7 @@ onMounted(async () => {
 .page-container {
   max-width: 1600px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 40px 20px 20px;
 }
 
 .content-wrapper {

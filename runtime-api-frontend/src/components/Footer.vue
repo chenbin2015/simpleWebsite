@@ -154,8 +154,8 @@ onMounted(() => {
 .app-footer {
   background: #303133;
   color: #fff;
-  padding: 40px 60px 10px;
-  min-height: 320px;
+  padding: 10px 60px 10px;
+  min-height: 260px;
 }
 .footer-container {
     width:1600px;
@@ -190,8 +190,8 @@ onMounted(() => {
 .footer-middle {
   display: flex;
   gap: 40px;
-  margin-bottom: 30px;
-  padding-bottom: 30px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 

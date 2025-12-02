@@ -59,9 +59,7 @@ button:focus-visible {
 }
 
 #app {
-  max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
 }
 
 /* 控制 tooltip 只显示一个 - 隐藏隐藏状态的 tooltip */

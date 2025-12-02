@@ -1,39 +1,27 @@
 <template>
     <div class="sidebar-menu">
-      <el-card class="menu-card">
+      <el-card class="menu-card" v-if="currentGroup">
         <template #header>
           <div class="menu-header">
-            <h3>通用模块</h3>
+            <h3>{{ currentGroup.title }}</h3>
           </div>
         </template>
         <el-menu
           :default-active="activePath"
           class="vertical-menu"
           :router="true"
-          :default-openeds="defaultOpenedKeys"
-          @open="handleSubMenuOpen"
-          @close="handleSubMenuClose"
         >
-          <!-- 显示所有四个通用模块作为二级菜单 -->
-          <el-sub-menu
-            v-for="group in commonModuleGroups"
-            :key="group.key"
-            :index="group.key"
+          <!-- 只显示当前根节点下的菜单项 -->
+          <el-menu-item
+            v-for="item in currentGroup.items"
+            :key="item.key"
+            :index="getMenuItemPath(currentGroup.key, item)"
           >
-            <template #title>
-              <span>{{ group.title }}</span>
-            </template>
-            <el-menu-item
-              v-for="item in group.items"
-              :key="item.key"
-              :index="getMenuItemPath(group.key, item)"
-            >
-              <el-icon v-if="item.icon">
-                <component :is="getIconComponent(item.icon)" />
-              </el-icon>
-              <span>{{ item.name }}</span>
-            </el-menu-item>
-          </el-sub-menu>
+            <el-icon v-if="item.icon">
+              <component :is="getIconComponent(item.icon)" />
+            </el-icon>
+            <span>{{ item.name }}</span>
+          </el-menu-item>
         </el-menu>
       </el-card>
     </div>
@@ -62,7 +50,7 @@
       : defaultMenuGroups
   })
   
-  // 定义通用模块的 key 列表（按照显示顺序）
+  // 定义通用模块的 key 列表（用于判断是否是通用模块）
   const commonModuleKeys = [
     'experiment-teaching',    // 实验教学
     'experiment-resources',   // 实验资源
@@ -70,11 +58,28 @@
     'safety-management'       // 安全管理
   ]
   
-  // 获取所有通用模块组
-  const commonModuleGroups = computed(() => {
-    return commonModuleKeys
-      .map(key => menuGroups.value[key])
-      .filter(group => group !== undefined)
+  // 获取当前根节点对应的菜单组
+  const currentGroup = computed(() => {
+    // 从路由路径获取当前根节点
+    let group = null
+    
+    // 先从动态菜单中查找
+    if (route.path.startsWith('/dynamic/')) {
+      const pathParts = route.path.split('/').filter(Boolean)
+      if (pathParts.length >= 2 && pathParts[0] === 'dynamic') {
+        const rootType = pathParts[1]
+        group = menuGroups.value[rootType] || null
+      }
+    } else if (route.path.startsWith('/detail/')) {
+      group = getCurrentGroupFromDetail()
+    }
+    
+    // 只返回通用模块的菜单组
+    if (group && commonModuleKeys.includes(group.key)) {
+      return group
+    }
+    
+    return null
   })
   
   // 加载菜单数据
@@ -96,25 +101,6 @@
     loadMenus()
   })
   
-  // 默认展开当前激活的菜单组
-  const defaultOpenedKeys = computed(() => {
-    return openedKeys.value
-  })
-  
-  // 处理子菜单展开
-  const handleSubMenuOpen = (key) => {
-    if (!openedKeys.value.includes(key)) {
-      openedKeys.value.push(key)
-    }
-  }
-  
-  // 处理子菜单关闭
-  const handleSubMenuClose = (key) => {
-    const index = openedKeys.value.indexOf(key)
-    if (index > -1) {
-      openedKeys.value.splice(index, 1)
-    }
-  }
   
   // 从详情页获取当前菜单组
   function getCurrentGroupFromDetail() {
@@ -144,42 +130,8 @@
     return route.path
   })
   
-  // 更新展开的菜单组
-  const updateOpenedKeys = () => {
-    const currentGroup = getMenuGroupByPath(route.path) || 
-      (route.path.startsWith('/detail/') ? getCurrentGroupFromDetail() : null)
-    
-    if (currentGroup && commonModuleKeys.includes(currentGroup.key)) {
-      if (!openedKeys.value.includes(currentGroup.key)) {
-        openedKeys.value = [currentGroup.key]
-      }
-      return
-    }
-    
-    // 如果是详情页，尝试从查询参数中获取
-    if (route.path.startsWith('/detail/')) {
-      const from = route.query.from
-      if (from && from !== 'popular-science' && from !== 'home') {
-        const allRootTypes = Object.values(menuGroups.value).map(g => g.key)
-        const sortedRootTypes = allRootTypes.sort((a, b) => b.length - a.length)
-        
-        for (const rootType of sortedRootTypes) {
-          if (from.startsWith(rootType + '-') && commonModuleKeys.includes(rootType)) {
-            if (!openedKeys.value.includes(rootType)) {
-              openedKeys.value = [rootType]
-            }
-            return
-          }
-        }
-      }
-    }
-  }
-  
-  // 监听路由变化，更新 activeMenuPath 和展开的菜单组
+  // 监听路由变化，更新 activeMenuPath
   watch(() => [route.path, route.query], async ([path, query]) => {
-    // 更新展开的菜单组
-    updateOpenedKeys()
-    
     if (path.startsWith('/detail/')) {
       const from = query.from
       if (from && from !== 'popular-science' && from !== 'home') {
@@ -235,9 +187,6 @@
     }
   }, { immediate: true })
   
-  // 初始化时更新展开的菜单组
-  updateOpenedKeys()
-  
   // 获取菜单项路径
   const getMenuItemPath = (rootType, item) => {
     if (!rootType) {
@@ -278,35 +227,11 @@
     border-right: none;
   }
   
-  /* 父菜单（二级菜单标题）样式 */
-  .vertical-menu :deep(.el-sub-menu) {
-    margin-bottom: 5px;
-  }
-  
-  .vertical-menu :deep(.el-sub-menu__title) {
-    height: 50px;
-    line-height: 50px;
-    border-radius: 4px;
-    font-size: 15px;
-    font-weight: 500;
-    color: #303133;
-  }
-  
-  .vertical-menu :deep(.el-sub-menu__title:hover) {
-    background-color: #ecf5ff;
-    color: #409eff;
-  }
-  
-  /* 父菜单展开时的样式 */
-  .vertical-menu :deep(.el-sub-menu.is-opened > .el-sub-menu__title) {
-    color: #409eff;
-  }
-  
-  /* 子菜单项样式 */
+  /* 菜单项样式 */
   .vertical-menu :deep(.el-menu-item) {
     height: 45px;
     line-height: 45px;
-    padding-left: 50px !important;
+    padding-left: 20px !important;
     border-radius: 4px;
     margin: 2px 0;
   }
