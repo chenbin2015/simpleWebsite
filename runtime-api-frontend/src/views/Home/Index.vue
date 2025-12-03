@@ -69,7 +69,7 @@
               @click="handleServiceClick(service)"
             >
               <div class="service-icon">
-                <el-icon :size="40" :color="'#4caf50'">
+                <el-icon :size="50" :color="'#4caf50'">
                   <component :is="service.iconComponent" />
                 </el-icon>
               </div>
@@ -320,6 +320,9 @@ export default {
   justify-content: space-between;
   align-items: center;
   background-color: #fff;
+  border-bottom: 2px solid #ffd700;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
 }
 
 .header-left {
@@ -346,6 +349,8 @@ export default {
   font-size: 24px;
   font-weight: bold;
   color: #333;
+  border-bottom: 2px solid #ffd700;
+  padding-bottom: 20px;
   margin-bottom: 20px;
 }
 
@@ -569,8 +574,9 @@ export default {
 .service-item {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 25px 20px;
+  justify-content: center;
+  gap: 20px;
+  padding: 30px 20px;
   background-color: #f5f5f5;
   border-radius: 8px;
   transition: all 0.3s;
@@ -592,8 +598,14 @@ export default {
   justify-content: center;
 }
 
+.service-icon :deep(.el-icon) {
+  font-size: 50px !important;
+  width: 50px;
+  height: 50px;
+}
+
 .service-text {
-  font-size: 16px;
+  font-size: 20px;
   color: #333;
   font-weight: 500;
   line-height: 1.5;

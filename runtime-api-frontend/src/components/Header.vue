@@ -236,6 +236,7 @@ export default {
   display: flex;
   align-items: center;
   margin-right: 40px;
+  flex-shrink: 0;
 }
 
 .logo {
@@ -245,7 +246,7 @@ export default {
 
 .nav-section {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   flex: 1;
   overflow: visible;
   min-width: 0;

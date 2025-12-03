@@ -35,8 +35,13 @@
               :key="index"
               @click="handleNewsClick(news)"
             >
+              <div class="news-date">
+                <div class="date-day">{{ news.day }}</div>
+                <div class="date-month">{{ news.month }}</div>
+              </div>
               <div class="news-content">
                 <h3 class="news-title">{{ news.title }}</h3>
+                <p class="news-desc" v-if="news.description">{{ news.description }}</p>
               </div>
             </div>
           </div>
@@ -164,6 +169,19 @@ const loadNews = async () => {
     if (response.data && response.data.success && response.data.data) {
       const items = response.data.data || []
       newsList.value = items.map(item => {
+        // 解析日期
+        let day = ''
+        let month = ''
+        if (item.publishTime) {
+          const date = new Date(item.publishTime)
+          day = date.getDate().toString()
+          month = `${date.getMonth() + 1}月`
+        } else if (item.createdAt) {
+          const date = new Date(item.createdAt)
+          day = date.getDate().toString()
+          month = `${date.getMonth() + 1}月`
+        }
+        
         // 提取摘要
         let description = ''
         if (item.content) {
@@ -177,6 +195,8 @@ const loadNews = async () => {
         
         return {
           id: String(item.id),
+          day,
+          month,
           title: item.title || '',
           description: description
         }
@@ -312,8 +332,8 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #4caf50;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #ffd700;
 }
 
 .module-title {
@@ -342,7 +362,9 @@ onMounted(async () => {
 }
 
 .news-item {
-  padding: 12px 0;
+  display: flex;
+  gap: 15px;
+  padding: 0px 0 26px;
   border-bottom: 1px solid #eee;
   cursor: pointer;
   transition: all 0.3s;
@@ -361,12 +383,38 @@ onMounted(async () => {
   color: #4caf50;
 }
 
+.news-date {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  background-color: #90ee90;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+}
+
+.date-day {
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.date-month {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
 .news-content {
-  width: 100%;
+  flex: 1;
+  margin-right: 20px;
+  height: 65px;
 }
 
 .news-title {
-  margin: 0;
+  margin: 0 0 8px 0;
   font-size: 16px;
   font-weight: bold;
   color: #333;
@@ -376,6 +424,18 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
+}
+
+.news-desc {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>
   

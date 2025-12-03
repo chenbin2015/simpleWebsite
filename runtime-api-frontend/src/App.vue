@@ -5,13 +5,13 @@
       <el-header class="app-header">
         <div class="header-content">
           <!-- Logo -->
-          <div class="logo-section">
+          <!-- <div class="logo-section">
             <img 
               src="https://guanwang.makabaka.ltd/uploads/20250910/f803dcb1eedefdac8fcefa641a4d6020.png" 
               alt="Logo" 
               class="logo"
             />
-          </div>
+          </div> -->
           
           <!-- 导航菜单 -->
           <div class="nav-section">
@@ -20,6 +20,7 @@
               mode="horizontal"
               class="nav-menu"
               @select="handleMenuSelect"
+              style="width: 1000px;"
             >
               <el-menu-item 
                 v-for="menu in topMenus" 
@@ -512,29 +513,32 @@ export default {
 
 .header-content {
   width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   padding: 0 40px;
+  background: url(https://guanwang.makabaka.ltd/uploads/20250910/f803dcb1eedefdac8fcefa641a4d6020.png) no-repeat left 20px top 10px;
+  background-size: auto 60px;
 }
 
 .logo-section {
   display: flex;
   align-items: center;
   margin-right: 40px;
+  margin-top: 10px;
 }
 
 .logo {
-  height: 50px;
+  height: 60px;
   width: auto;
 }
 
 .nav-section {
   display: flex;
   justify-content: flex-start;
-  flex: 1;
+ 
   overflow: visible;
-  min-width: 0;
 }
 
 .nav-section .el-menu {
