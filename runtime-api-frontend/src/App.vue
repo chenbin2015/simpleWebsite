@@ -5,13 +5,13 @@
       <el-header class="app-header">
         <div class="header-content">
           <!-- Logo -->
-          <!-- <div class="logo-section">
+          <div class="logo-section">
             <img 
               src="https://guanwang.makabaka.ltd/uploads/20250910/f803dcb1eedefdac8fcefa641a4d6020.png" 
               alt="Logo" 
               class="logo"
             />
-          </div> -->
+          </div>
           
           <!-- 导航菜单 -->
           <div class="nav-section">
@@ -45,6 +45,7 @@
               </el-menu-item>
             </el-menu>
           </div>
+          <div class="nav-space"></div>
         </div>
       </el-header>
       
@@ -509,6 +510,7 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   height: 80px !important;
   position: relative;
+
 }
 
 .header-content {
@@ -516,10 +518,7 @@ export default {
   height: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 40px;
-  background: url(https://guanwang.makabaka.ltd/uploads/20250910/f803dcb1eedefdac8fcefa641a4d6020.png) no-repeat left 20px top 10px;
-  background-size: auto 60px;
+  justify-content: space-between;
 }
 
 .logo-section {
@@ -527,6 +526,7 @@ export default {
   align-items: center;
   margin-right: 40px;
   margin-top: 10px;
+  width:200px;
 }
 
 .logo {
@@ -539,6 +539,10 @@ export default {
   justify-content: flex-start;
  
   overflow: visible;
+ 
+}
+.nav-space {
+  width: 200px;
 }
 
 .nav-section .el-menu {
@@ -552,6 +556,10 @@ export default {
   border-bottom: none !important;
   background: transparent;
   overflow: visible !important;
+  transform: scale(1);
+  /* 或使用 zoom 属性 */
+  zoom: 1;
+  transform-origin: 0 0;
 }
 
 /* 完全隐藏菜单的省略号按钮和"更多"菜单 */
