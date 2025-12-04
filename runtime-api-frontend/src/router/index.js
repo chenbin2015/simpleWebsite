@@ -5,6 +5,7 @@ import DynamicPage from '../views/DynamicPage.vue'
 import PopularScience from '../views/PopularScience.vue'
 import DetailPage from '../views/DetailPage.vue'
 import CommonList from '../views/CommonList.vue'
+import UnderConstruction from '../views/UnderConstruction.vue'
 
 const routes = [
   {
@@ -41,6 +42,12 @@ const routes = [
     path: '/common-list',
     name: 'CommonList',
     component: CommonList
+  },
+  // 系统建设中页面
+  {
+    path: '/under-construction',
+    name: 'UnderConstruction',
+    component: UnderConstruction
   }
 ]
 

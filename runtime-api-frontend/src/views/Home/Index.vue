@@ -90,7 +90,7 @@
 </template>
 
 <script>
-import { Calendar, Lock, Tools } from '@element-plus/icons-vue'
+import { Calendar, Lock, Tools, School } from '@element-plus/icons-vue'
 import AnnouncementList from '@/components/AnnouncementList.vue'
 import { 
   getBanner, 
@@ -106,6 +106,7 @@ export default {
     Calendar,
     Lock,
     Tools,
+    School,
     AnnouncementList
   },
   data() {
@@ -123,6 +124,11 @@ export default {
           name: '实验申请与安全准入',
           iconComponent: Lock,
           url: 'https://10.201.0.173:8443/lspcp-web/board'
+        },
+        {
+          name: '实验教学管理系统',
+          iconComponent: School,
+          url: ''
         }
       ],
       announcementList: [],
@@ -262,6 +268,12 @@ export default {
       })
     },
     handleServiceClick(service) {
+      // 如果是实验教学管理系统，跳转到系统建设页面
+      if (service.name === '实验教学管理系统') {
+        this.$router.push('/under-construction')
+        return
+      }
+      
       if (service.url) {
         window.open(service.url, '_blank')
       }

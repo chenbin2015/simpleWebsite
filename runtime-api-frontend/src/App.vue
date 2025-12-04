@@ -501,8 +501,8 @@ export default {
 }
 
 .app-header {
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  background: #fff;
+  color: #D4AF37;
   padding: 0;
   padding-bottom: 10px;
   display: flex;
@@ -556,10 +556,6 @@ export default {
   border-bottom: none !important;
   background: transparent;
   overflow: visible !important;
-  transform: scale(1);
-  /* 或使用 zoom 属性 */
-  zoom: 1;
-  transform-origin: 0 0;
 }
 
 /* 完全隐藏菜单的省略号按钮和"更多"菜单 */
@@ -622,15 +618,15 @@ export default {
   line-height: 80px;
   padding: 0 15px !important;
   font-size: 22px;
-  color: #fff;
+  color: #D4AF37;
   border-bottom: none !important;
   flex-shrink: 0;
 }
 
 .nav-menu .el-menu-item:hover,
 .nav-menu .el-sub-menu__title:hover {
-  background-color: transparent !important;
-  color: #D4AF37;
+  background-color: #D4AF37 !important;
+  color: #fff;
 }
 
 .nav-menu .el-menu-item.is-active {
