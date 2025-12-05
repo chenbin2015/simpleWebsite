@@ -626,13 +626,13 @@ export default {
 .nav-menu .el-menu-item:hover,
 .nav-menu .el-sub-menu__title:hover {
   background-color: #D4AF37 !important;
-  color: #fff;
+  color: #fff !important;
 }
 
 .nav-menu .el-menu-item.is-active {
-  color: #D4AF37 !important;
+  color: #fff !important;
   border-bottom: none !important;
-  background-color: transparent !important;
+  background-color: #D4AF37 !important;
   position: relative;
 }
 
@@ -647,9 +647,10 @@ export default {
 }
 
 .nav-menu .el-sub-menu.is-active .el-sub-menu__title {
-  color: #D4AF37 !important;
+  color: #fff !important;
   border-bottom: none !important;
   position: relative;
+  background-color: #D4AF37 !important;
 }
 
 .nav-menu .el-sub-menu.is-active .el-sub-menu__title::after {
@@ -660,6 +661,13 @@ export default {
   right: 15px;
   height: 3px;
   background: #D4AF37;
+}
+
+/* 下拉子菜单的 hover/选中：文字黄色 */
+.nav-menu .el-menu--popup .el-menu-item:hover,
+.nav-menu .el-menu--popup .el-menu-item.is-active {
+  color: #D4AF37 !important;
+  background-color: #fff !important;
 }
 
 .app-main {
