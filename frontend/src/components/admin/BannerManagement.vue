@@ -124,7 +124,8 @@
           ref="pictureCropperRef"
           :boxStyle="{
             width: '100%',
-            height: '400px',
+            height: 'auto',
+            maxHeight: '80vh',
             backgroundColor: '#f8f8f8',
             margin: 'auto'
           }"
@@ -133,7 +134,7 @@
             viewMode: 1,
             dragMode: 'move',
             aspectRatio: NaN,
-            autoCropArea: 0.8,
+            autoCropArea: 1,
             restore: false,
             guides: true,
             center: true,
@@ -448,6 +449,17 @@ const handleBannerReset = () => {
 // 裁剪相关函数
 const onCropReady = () => {
   cropperReady.value = true
+  if (cropper) {
+    const imageData = cropper.getImageData()
+    if (imageData) {
+      cropper.setCropBoxData({
+        left: imageData.left,
+        top: imageData.top,
+        width: imageData.width,
+        height: imageData.height
+      })
+    }
+  }
 }
 
 const onCrop = () => {

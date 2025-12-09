@@ -31,7 +31,8 @@
           ref="pictureCropperRef"
           :boxStyle="{
             width: '100%',
-            height: '400px',
+            height: 'auto',
+            maxHeight: '80vh',
             backgroundColor: '#f8f8f8',
             margin: 'auto'
           }"
@@ -40,7 +41,7 @@
             viewMode: 1,
             dragMode: 'move',
             aspectRatio: NaN,
-            autoCropArea: 0.8,
+            autoCropArea: 1,
             restore: false,
             guides: true,
             center: true,
@@ -130,8 +131,19 @@ const handleBannerChange = async (file, fileList) => {
 
 // 裁剪器准备就绪
 const onCropReady = () => {
-  // 裁剪器已准备好
+  // 裁剪器已准备好，默认裁剪框与当前图片显示区域等大
   cropperReady.value = true
+  if (cropper) {
+    const imageData = cropper.getImageData()
+    if (imageData) {
+      cropper.setCropBoxData({
+        left: imageData.left,
+        top: imageData.top,
+        width: imageData.width,
+        height: imageData.height
+      })
+    }
+  }
 }
 
 // 裁剪事件
