@@ -35,7 +35,7 @@ import { useRouter, useRoute } from 'vue-router'
 const props = defineProps({
   title: {
     type: String,
-    default: '通知公告'
+    default: ''
   },
   list: {
     type: Array,

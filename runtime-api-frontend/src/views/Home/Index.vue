@@ -80,7 +80,7 @@
       </div>
       <!-- 通知公告区域 -->
       <AnnouncementList 
-        title="通知公告"
+        title="公告列表"
         :list="announcementList"
         more-link="#"
         from="home"

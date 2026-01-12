@@ -118,7 +118,7 @@ const from = computed(() => route.query.from || 'home')
 
 // 页面标题
 const pageTitle = computed(() => {
-  return listType.value === 'announcement' ? '通知公告' : '新闻动态'
+  return listType.value === 'announcement' ? '公告列表' : '新闻动态'
 })
 
 // 搜索占位符

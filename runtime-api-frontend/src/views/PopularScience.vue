@@ -49,7 +49,7 @@
       </div>
       <!-- 通知公告区域 -->
       <AnnouncementList 
-        title="参会公告"
+        title="参访公告"
         :list="announcementList"
         more-link="#"
         from="popular-science"
