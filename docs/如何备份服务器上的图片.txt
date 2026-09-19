@@ -1,0 +1,1 @@
+scp -r root@116.62.13.27:/etc/eastSouth/backend/upload D:\lichaoming\创建要给文件夹
