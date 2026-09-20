@@ -53,7 +53,11 @@ public class ConfigUtil {
      * @return 基础URL，例如：http://116.62.13.27:8084
      */
     public static String getBaseUrl() {
-        return getConfigValue("base_url", "http://116.62.13.27:8084");
+        String envUrl = System.getenv("APP_BASE_URL");
+        if (envUrl != null) {
+            return envUrl;
+        }
+        return getConfigValue("base_url", "");
     }
     
     /**

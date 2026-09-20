@@ -4,8 +4,7 @@
  */
 
 // 开发环境配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://116.62.13.27:8084'
-// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8084'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 // API 路径前缀
 const API_PREFIX = '/api'

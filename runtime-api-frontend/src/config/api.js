@@ -3,9 +3,8 @@
  * 统一管理后端 API 的基础 URL
  */
 
-// 开发环境配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://116.62.13.27:8084'
-// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8084'
+// 开发环境自动加载 .env.development，构建时加载 .env.production
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 // API 路径前缀
 const API_PREFIX = '/api'

@@ -1,0 +1,6 @@
+FROM docker.m.daocloud.io/library/nginx:alpine
+RUN rm /etc/nginx/conf.d/default.conf
+COPY nginx/conf.d/site.conf /etc/nginx/conf.d/site.conf
+COPY frontend_dist /etc/simpleBackendFrontend
+COPY runtime_api_frontend_dist /etc/simpleWebsite
+EXPOSE 80 8080
