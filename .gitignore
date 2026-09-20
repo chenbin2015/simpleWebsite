@@ -48,3 +48,9 @@ desktop.ini
 *.temp
 .cache/
 backend/upload/**/* 
+
+# 大型压缩文件（备份/部署包）
+*.tar.gz
+*.zip
+backups/**/*.tar.gz
+scripts/docker_deploy_package.tar.gz
